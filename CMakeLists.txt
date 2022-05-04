@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.5.0)
 
-project(usb_camera_driver)
+project(ros2_usb_camera)
 
 # Default to C++14
 if(NOT CMAKE_CXX_STANDARD)
@@ -91,3 +91,4 @@ if(BUILD_TESTING)
 endif()
 
 ament_package()
+
