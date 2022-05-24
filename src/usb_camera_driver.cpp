@@ -20,6 +20,9 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 */
 
+// USEFUL LINK
+// https://www.stereolabs.com/docs/ros2/ros2-composition/
+
 #include <chrono>
 #include <cstdio>
 #include <memory>
@@ -44,6 +47,13 @@ CameraDriver::CameraDriver(const rclcpp::NodeOptions &node_options) : Node("usb_
 
     rmw_qos_profile_t custom_qos_profile = rmw_qos_profile_sensor_data;
     camera_info_pub_ = image_transport::create_camera_publisher(this, "image", custom_qos_profile);
+
+    camera_info_sub_ = image_transport::create_camera_subscription(
+        this, 
+        "image", 
+        std::bind(&CameraDriver::second_callback, this, std::placeholders::_1, std::placeholders::_2), 
+        "raw",
+        custom_qos_profile);
 
     cinfo_manager_ = std::make_shared<camera_info_manager::CameraInfoManager>(this);
 
@@ -75,32 +85,34 @@ std::shared_ptr<sensor_msgs::msg::Image> CameraDriver::ConvertFrameToMessage(cv:
     ros_image.height = frame.rows;
     ros_image.width = frame.cols;
     ros_image.encoding = "bgr8";
-    /* FIXME c++20 has std::endian */
-    // ros_image.is_bigendian = (std::endian::native == std::endian::big);
-    ros_image.is_bigendian = false;
+
+    int num = 1; // for endianness detection
+    ros_image.is_bigendian = !(*(char*)&num == 1);
+
     ros_image.step = frame.cols * frame.elemSize();
     size_t size = ros_image.step * frame.rows;
     ros_image.data.resize(size);
 
-    if (frame.isContinuous())
-    {
-        memcpy(reinterpret_cast<char *>(&ros_image.data[0]), frame.data, size);
-    }
-    else
-    {
-        // Copy by row by row
-        uchar *ros_data_ptr = reinterpret_cast<uchar *>(&ros_image.data[0]);
-        uchar *cv_data_ptr = frame.data;
-        for (int i = 0; i < frame.rows; ++i)
-        {
-            memcpy(ros_data_ptr, cv_data_ptr, ros_image.step);
-            ros_data_ptr += ros_image.step;
-            cv_data_ptr += frame.step;
-        }
-    }
+    memcpy(reinterpret_cast<char *>(&ros_image.data[0]), frame.data, size);
 
     auto msg_ptr_ = std::make_shared<sensor_msgs::msg::Image>(ros_image);
     return msg_ptr_;
+}
+
+void CameraDriver::second_callback(const sensor_msgs::msg::Image::ConstSharedPtr& img, 
+                                   const sensor_msgs::msg::CameraInfo::ConstSharedPtr& cam_info)
+{
+    UNUSED(cam_info);
+    RCLCPP_INFO(this->get_logger(), "Image received");
+
+    // Convert BGRA to BGR using OpenCV
+    cv::Mat bgr(img->height, img->width, CV_8UC3, (void*)(&img->data[0]));
+
+    cv::Mat greyMat;
+    cv::cvtColor(bgr, greyMat, cv::COLOR_BGR2GRAY);
+
+    // imwrite("/home/ros/workspace/pics/" + std::to_string(num_pic) + "a.jpg", greyMat);
+    // num_pic++;
 }
 
 void CameraDriver::ImageCallback()

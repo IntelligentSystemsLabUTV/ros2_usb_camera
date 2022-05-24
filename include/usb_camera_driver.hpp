@@ -40,6 +40,8 @@ SOFTWARE.
 #include "opencv2/highgui/highgui.hpp"
 #include <opencv2/imgproc.hpp>
 
+#define UNUSED(arg) (void)(arg)
+
 namespace usb_camera_driver
 {
 
@@ -66,12 +68,16 @@ private:
 
     std::shared_ptr<camera_info_manager::CameraInfoManager> cinfo_manager_;
     image_transport::CameraPublisher camera_info_pub_;
+    image_transport::CameraSubscriber camera_info_sub_;
     
     std::shared_ptr<sensor_msgs::msg::Image> image_msg_;
     
     std::shared_ptr<sensor_msgs::msg::Image> ConvertFrameToMessage(cv::Mat & frame);
     
     void ImageCallback();
+    void second_callback(const sensor_msgs::msg::Image::ConstSharedPtr& img, const sensor_msgs::msg::CameraInfo::ConstSharedPtr& cam_info);
+
+    int num_pic = 0;
     
 
 };
