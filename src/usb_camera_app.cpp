@@ -1,45 +1,65 @@
-/*
-Copyright (c) 2019 Andreas Klintberg
+/**
+ * ROS 2 USB Camera standalone application.
+ *
+ * Roberto Masocco <robmasocco@gmail.com>
+ * Lorenzo Bianchi <lnz.bnc@gmail.com>
+ * Intelligent Systems Lab <isl.torvergata@gmail.com>
+ *
+ * June 4, 2022
+ */
 
-Permission is hereby granted, free of charge, to any person obtaining a copy
-of this software and associated documentation files (the "Software"), to deal
-in the Software without restriction, including without limitation the rights
-to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-copies of the Software, and to permit persons to whom the Software is
-furnished to do so, subject to the following conditions:
+/**
+ * Copyright © 2022 Intelligent Systems Lab
+ */
 
-The above copyright notice and this permission notice shall be included in all
-copies or substantial portions of the Software.
+/**
+ * This is free software.
+ * You can redistribute it and/or modify this file under the
+ * terms of the GNU General Public License as published by the Free Software
+ * Foundation; either version 3 of the License, or (at your option) any later
+ * version.
+ *
+ * This file is distributed in the hope that it will be useful, but WITHOUT ANY
+ * WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR
+ * A PARTICULAR PURPOSE. See the GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License along with
+ * this file; if not, write to the Free Software Foundation, Inc.,
+ * 51 Franklin St, Fifth Floor, Boston, MA 02110-1301 USA.
+ */
 
-THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
-SOFTWARE.
-*/
+#define MODULE_NAME "usb_camera_app"
 
-#include "usb_camera_driver.hpp"
+#include <cstdio>
+#include <cstdlib>
+#include <iostream>
 
-int main(int argc, char * argv[])
+#include <rclcpp/rclcpp.hpp>
+
+#include <usb_camera_driver/usb_camera_driver.hpp>
+
+using namespace USBCameraDriver;
+
+int main(int argc, char ** argv)
 {
+  // Disable I/O buffering
+  if (setvbuf(stdout, NULL, _IONBF, 0)) {
+    RCLCPP_FATAL(
+      rclcpp::get_logger(MODULE_NAME),
+      "Failed to set I/O buffering");
+    exit(EXIT_FAILURE);
+  }
 
-    // Force flush of the stdout buffer.
-    // This ensures a correct sync of all prints
-    // even when executed simultaneously within a launch file.
-    setvbuf(stdout, NULL, _IONBF, BUFSIZ);
-    
-    rclcpp::init(argc, argv);
-    rclcpp::executors::SingleThreadedExecutor exec;
+  // Initialize ROS 2 context
+  rclcpp::init(argc, argv);
 
-    const rclcpp::NodeOptions options;
-    auto usb_camera_driver = std::make_shared<usb_camera_driver::CameraDriver>(options);
+  // Initialize ROS 2 node
+  auto usb_camera_driver_node = std::make_shared<CameraDriverNode>();
 
-    exec.add_node(usb_camera_driver);
-    
-    exec.spin();
-    
-    rclcpp::shutdown();
-    return 0;
+  // Spin on the node
+  rclcpp::spin(usb_camera_driver_node);
+
+  // Terminate application
+  rclcpp::shutdown();
+  exit(EXIT_SUCCESS);
 }

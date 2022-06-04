@@ -20,7 +20,6 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 */
 
-
 #ifndef USB_CAMERA_DRIVER__CAMERA_DRIVER_HPP_
 #define USB_CAMERA_DRIVER__CAMERA_DRIVER_HPP_
 
@@ -42,45 +41,47 @@ SOFTWARE.
 
 #define UNUSED(arg) (void)(arg)
 
-namespace usb_camera_driver
+namespace USBCameraDriver
 {
 
-class CameraDriver : public rclcpp::Node {
+class CameraDriverNode : public rclcpp::Node
+{
 public:
-    explicit CameraDriver(const rclcpp::NodeOptions&);
-    ~CameraDriver() {};
-        
+  explicit CameraDriverNode(const rclcpp::NodeOptions & opts = rclcpp::NodeOptions());
+  ~CameraDriverNode();  // TODO Must close some device here?
+
 private:
-    rclcpp::TimerBase::SharedPtr timer_;
-    cv::Mat frame;
-    cv::Mat flipped_frame;
-    cv::VideoCapture cap;
-    
-    bool is_flipped;
+  rclcpp::TimerBase::SharedPtr timer_;
+  cv::Mat frame;
+  cv::Mat flipped_frame;
+  cv::VideoCapture cap;
 
-    std::string frame_id_;
-    int image_height_;
-    int image_width_;
-    double fps_;
-    int camera_id;
+  bool is_flipped;
 
-    std::chrono::steady_clock::time_point last_frame_;
+  std::string frame_id_;
+  int image_height_;
+  int image_width_;
+  double fps_;
+  int camera_id;
 
-    std::shared_ptr<camera_info_manager::CameraInfoManager> cinfo_manager_;
-    image_transport::CameraPublisher camera_info_pub_;
-    image_transport::CameraSubscriber camera_info_sub_;
-    
-    std::shared_ptr<sensor_msgs::msg::Image> image_msg_;
-    
-    std::shared_ptr<sensor_msgs::msg::Image> ConvertFrameToMessage(cv::Mat & frame);
-    
-    void ImageCallback();
-    void second_callback(const sensor_msgs::msg::Image::ConstSharedPtr& img, const sensor_msgs::msg::CameraInfo::ConstSharedPtr& cam_info);
+  std::chrono::steady_clock::time_point last_frame_;
 
-    int num_pic = 0;
-    
+  std::shared_ptr<camera_info_manager::CameraInfoManager> cinfo_manager_;
+  image_transport::CameraPublisher camera_info_pub_;
+  image_transport::CameraSubscriber camera_info_sub_;
 
+  std::shared_ptr<sensor_msgs::msg::Image> image_msg_;
+
+  std::shared_ptr<sensor_msgs::msg::Image> ConvertFrameToMessage(cv::Mat & frame);
+
+  void ImageCallback();
+  void second_callback(
+    const sensor_msgs::msg::Image::ConstSharedPtr & img,
+    const sensor_msgs::msg::CameraInfo::ConstSharedPtr & cam_info);
+
+  int num_pic = 0;
 };
-} // namespace usb_camera_driver
-#endif //USB_CAMERA_DRIVER__CAMERA_DRIVER_HPP_
 
+} // namespace USBCameraDriver
+
+#endif //USB_CAMERA_DRIVER__CAMERA_DRIVER_HPP_
