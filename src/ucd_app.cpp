@@ -34,6 +34,9 @@
 #include <cstdlib>
 #include <iostream>
 
+#include <sys/types.h>
+#include <unistd.h>
+
 #include <rclcpp/rclcpp.hpp>
 
 #include <usb_camera_driver/usb_camera_driver.hpp>
@@ -56,10 +59,16 @@ int main(int argc, char ** argv)
   // Initialize ROS 2 node
   auto usb_camera_driver_node = std::make_shared<CameraDriverNode>();
 
+  RCLCPP_WARN(
+    rclcpp::get_logger(MODULE_NAME),
+    "(%d) " MODULE_NAME " online",
+    getpid());
+
   // Spin on the node
   rclcpp::spin(usb_camera_driver_node);
 
-  // Terminate application
+  // Terminate node and application
+  usb_camera_driver_node.reset();
   rclcpp::shutdown();
   exit(EXIT_SUCCESS);
 }
