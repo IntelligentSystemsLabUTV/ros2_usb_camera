@@ -1,3 +1,10 @@
-usb_camera_driver:
-    ros__parameters: 
-      camera_calibration_file: file://<absolut-path-for-now>
+/usb_camera_driver:
+  ros__parameters:
+    base_topic_name: camera
+    camera_calibration_file: file://config/camera.yaml
+    camera_id: 0
+    fps: 20
+    frame_id: map
+    image_height: 480
+    image_width: 640
+    is_flipped: false

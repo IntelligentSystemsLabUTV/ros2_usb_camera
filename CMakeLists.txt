@@ -27,15 +27,18 @@ find_package(rclcpp REQUIRED)
 find_package(rclcpp_components REQUIRED)
 find_package(sensor_msgs REQUIRED)
 find_package(std_msgs REQUIRED)
+find_package(Threads REQUIRED)
 
 # USB Camera Driver node
 add_library(usb_camera_driver SHARED
-  src/usb_camera_driver.cpp)
+  src/usb_camera_driver/ucd_utils.cpp
+  src/usb_camera_driver/usb_camera_driver.cpp)
 target_compile_definitions(usb_camera_driver PRIVATE
   COMPOSITION_BUILDING_DLL)
 target_include_directories(usb_camera_driver PUBLIC
   $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
   $<INSTALL_INTERFACE:include>)
+target_link_libraries(usb_camera_driver Threads::Threads)
 ament_target_dependencies(
   usb_camera_driver
   "camera_calibration_parsers"
@@ -47,12 +50,12 @@ ament_target_dependencies(
   "sensor_msgs"
   "std_msgs"
 )
-rclcpp_components_register_nodes(usb_camera_driver "usb_camera_driver::CameraDriver")
-set(node_plugins "${node_plugins}usb_camera_driver::CameraDriver;$<TARGET_FILE:usb_camera_driver>\n")
+rclcpp_components_register_nodes(usb_camera_driver "USBCameraDriver::CameraDriverNode")
+set(node_plugins "${node_plugins}USBCameraDriver::CameraDriverNode;$<TARGET_FILE:usb_camera_driver>\n")
 
 # USB Camera standalone application
 add_executable(usb_camera_app
-  src/usb_camera_app.cpp)
+  src/ucd_app.cpp)
 target_include_directories(usb_camera_app PUBLIC
   $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
   $<INSTALL_INTERFACE:include>)

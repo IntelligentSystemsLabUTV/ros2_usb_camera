@@ -1,87 +1,148 @@
-/*
-Copyright (c) 2019 Andreas Klintberg
+/**
+ * ROS 2 USB Camera Driver node.
+ *
+ * Roberto Masocco <robmasocco@gmail.com>
+ * Lorenzo Bianchi <lnz.bnc@gmail.com>
+ * Intelligent Systems Lab <isl.torvergata@gmail.com>
+ *
+ * June 4, 2022
+ */
 
-Permission is hereby granted, free of charge, to any person obtaining a copy
-of this software and associated documentation files (the "Software"), to deal
-in the Software without restriction, including without limitation the rights
-to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-copies of the Software, and to permit persons to whom the Software is
-furnished to do so, subject to the following conditions:
+/**
+ * Copyright © 2022 Intelligent Systems Lab
+ */
 
-The above copyright notice and this permission notice shall be included in all
-copies or substantial portions of the Software.
+/**
+ * This is free software.
+ * You can redistribute it and/or modify this file under the
+ * terms of the GNU General Public License as published by the Free Software
+ * Foundation; either version 3 of the License, or (at your option) any later
+ * version.
+ *
+ * This file is distributed in the hope that it will be useful, but WITHOUT ANY
+ * WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR
+ * A PARTICULAR PURPOSE. See the GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License along with
+ * this file; if not, write to the Free Software Foundation, Inc.,
+ * 51 Franklin St, Fifth Floor, Boston, MA 02110-1301 USA.
+ */
 
-THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
-SOFTWARE.
-*/
+#ifndef ROS2_USB_CAMERA_USB_CAMERA_DRIVER_HPP
+#define ROS2_USB_CAMERA_USB_CAMERA_DRIVER_HPP
 
-#ifndef USB_CAMERA_DRIVER__CAMERA_DRIVER_HPP_
-#define USB_CAMERA_DRIVER__CAMERA_DRIVER_HPP_
+#include <atomic>
+#include <chrono>
+#include <memory>
+#include <string>
+#include <thread>
 
-#include <stdio.h>
-#include <iostream>
-#include "rclcpp/rclcpp.hpp"
+#include <rclcpp/rclcpp.hpp>
 
-#include "std_msgs/msg/string.hpp"
-#include "sensor_msgs/msg/image.hpp"
-#include "sensor_msgs/msg/camera_info.hpp"
-
-#include "sensor_msgs/image_encodings.hpp"
+#include <sensor_msgs/msg/camera_info.hpp>
+#include <sensor_msgs/msg/image.hpp>
+#include <sensor_msgs/image_encodings.hpp>
 
 #include <camera_info_manager/camera_info_manager.hpp>
+
 #include <image_transport/image_transport.hpp>
 
-#include "opencv2/highgui/highgui.hpp"
+#include <opencv2/core.hpp>
 #include <opencv2/imgproc.hpp>
+#include <opencv2/videoio.hpp>
 
-#define UNUSED(arg) (void)(arg)
+#include <rmw/types.h>
+
+using namespace rcl_interfaces::msg;
+using namespace sensor_msgs::msg;
 
 namespace USBCameraDriver
 {
 
+/**
+ * QoS profile for image transmission.
+ */
+static const rmw_qos_profile_t usb_camera_qos_profile = {
+  RMW_QOS_POLICY_HISTORY_KEEP_LAST,
+  1,
+  RMW_QOS_POLICY_RELIABILITY_BEST_EFFORT,
+  RMW_QOS_POLICY_DURABILITY_VOLATILE,
+  RMW_QOS_DEADLINE_DEFAULT,
+  RMW_QOS_LIFESPAN_DEFAULT,
+  RMW_QOS_POLICY_LIVELINESS_SYSTEM_DEFAULT,
+  RMW_QOS_LIVELINESS_LEASE_DURATION_DEFAULT,
+  false
+};
+
+/**
+ * Drives USB, V4L-compatible cameras with OpenCV.
+ */
 class CameraDriverNode : public rclcpp::Node
 {
 public:
   explicit CameraDriverNode(const rclcpp::NodeOptions & opts = rclcpp::NodeOptions());
-  ~CameraDriverNode();  // TODO Must close some device here?
+  ~CameraDriverNode();
 
 private:
-  rclcpp::TimerBase::SharedPtr timer_;
-  cv::Mat frame;
-  cv::Mat flipped_frame;
-  cv::VideoCapture cap;
+  /* Video capture device and buffers */
+  cv::VideoCapture video_cap_;
+  cv::Mat frame_;
+  cv::Mat flipped_frame_;
 
-  bool is_flipped;
-
+  /* Node parameters */
   std::string frame_id_;
-  int image_height_;
-  int image_width_;
-  double fps_;
-  int camera_id;
+  int64_t fps_ = 0;
+  int64_t image_height_ = 0;
+  int64_t image_width_ = 0;
+  bool is_flipped_ = false;
 
-  std::chrono::steady_clock::time_point last_frame_;
+  /* Node parameters descriptors */
+  ParameterDescriptor base_topic_name_descriptor_;
+  ParameterDescriptor camera_calibration_file_descriptor_;
+  ParameterDescriptor camera_id_descriptor_;
+  ParameterDescriptor frame_id_descriptor_;
+  ParameterDescriptor fps_descriptor_;
+  ParameterDescriptor image_height_descriptor_;
+  ParameterDescriptor image_width_descriptor_;
+  ParameterDescriptor is_flipped_descriptor_;
 
-  std::shared_ptr<camera_info_manager::CameraInfoManager> cinfo_manager_;
+  /* image_transport objects */
   image_transport::CameraPublisher camera_info_pub_;
-  image_transport::CameraSubscriber camera_info_sub_;
+  camera_info_manager::CameraInfo camera_info_;
+  std::shared_ptr<camera_info_manager::CameraInfoManager> cinfo_manager_;
 
-  std::shared_ptr<sensor_msgs::msg::Image> image_msg_;
+  /* Utility routines */
+  Image::SharedPtr frame_to_msg(cv::Mat & frame);
+  void declare_bool_parameter(
+    std::string && name,
+    bool default_val,
+    std::string && desc, std::string && constraints,
+    bool read_only, ParameterDescriptor & descriptor);
+  void declare_int_parameter(
+    std::string && name,
+    int64_t default_val, int64_t from, int64_t to, int64_t step,
+    std::string && desc, std::string && constraints,
+    bool read_only, ParameterDescriptor & descriptor);
+  void declare_string_parameter(
+    std::string && name,
+    std::string && default_val,
+    std::string && desc, std::string && constraints,
+    bool read_only, ParameterDescriptor & descriptor);
+  void init_parameters();
 
-  std::shared_ptr<sensor_msgs::msg::Image> ConvertFrameToMessage(cv::Mat & frame);
+  /* Parameters callback */
+  OnSetParametersCallbackHandle::SharedPtr on_set_params_chandle_;
+  SetParametersResult on_set_parameters_callback(
+    const std::vector<rclcpp::Parameter> & params);
 
-  void ImageCallback();
-  void second_callback(
-    const sensor_msgs::msg::Image::ConstSharedPtr & img,
-    const sensor_msgs::msg::CameraInfo::ConstSharedPtr & cam_info);
+  /* Thread objects and routines */
+  std::thread camera_sampling_thread_;
+  void camera_sampling_routine();
 
-  int num_pic = 0;
+  /* Synchronization primitives */
+  std::atomic<bool> is_canceling_;
 };
 
 } // namespace USBCameraDriver
 
-#endif //USB_CAMERA_DRIVER__CAMERA_DRIVER_HPP_
+#endif // ROS2_USB_CAMERA_USB_CAMERA_DRIVER_HPP

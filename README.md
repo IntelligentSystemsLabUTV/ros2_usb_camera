@@ -7,41 +7,33 @@ Simple ROS 2 driver node for USB cameras compatible with the `Video4Linux` APIs.
 - `CameraInfo` topic.
 - `CompressedImage` topic.
 - `Image` topic.
-- Camera selection, i.e. running multiple instances of the node, each one to drive a different camera.
+- Supports namespace and node name remappings, in order to run different cameras with multiple instances of the node.
+- ROS 2 component compilation and installation.
+- Optimized memory handling.
+- High-resolution, thread-based camera sampling.
 
 ## Usage
 
-The code compiles to both a standalone application executable and a ROS 2 component, and both can be run easily. There are also launch files for both configurations.
+The code compiles to both a standalone application executable and a ROS 2 component, and both can be run easily. There is also a launch file for the standalone application.
 
 You can use `RViz` to display the frames being streamed:
 
 - topic `Reliability Policy` must be set to `Best Effort`;
-- `Fixed Frame` in `Global Options` must be set to `map`.
+- `Fixed Frame` in `Global Options` must be set to what is the corresponding node parameter has been set to.
 
 ### Node Parameters
 
 Configuration files for node parameters can be found in `config`, with some standard default settings. They can be customized, or overridden from command line or launch files.
 
-- `frame_id`: transform frame_id of the camera, defaults to `map`.
-- `image_width`: image width, defaults to `640`.
-- `image_height`: image height, defaults to `480`.
+- `base_topic_name`: base transmission topic name for `image_transport` publishers.
+- `camera_calibration_file`: camera calibration YAML file URL.
+- `camera_id`: ID of the video capture device to open.
 - `fps`: camera capture rate, defaults to `20`.
-- `camera_id`: id of camera to be captured, defaults to `0`.
+- `frame_id`: transform frame_id of the camera, defaults to `map`.
+- `image_height`: image height, defaults to `480`.
+- `image_width`: image width, defaults to `640`.
+- `is_flipped`: toggles vertical image flipping.
 
-### Camera Calibration Files
+## Copyright
 
-TODO Check this.
-
-To use the camera info functionality you need to load a file from the [camera_calibration](https://github.com/ros-perception/image_pipeline/tree/ros2/camera_calibration) library and put it in/name it `file:///Users/<youruser>/.ros/camera_info/camera.yaml`
-
-### Compressed images
-
-TODO Check this.
-
-To get compressed images (works seamlessly with web streaming) republish the topic using image_transport which is available for ROS2.
-
-```bash
-ros2 run image_transport republish raw in:=image_raw compressed out:=image_raw_compressed
-```
-
-Make sure to link/install the [plugin](https://github.com/ros-perception/image_transport_plugins/tree/ros2) before to enable compressed image republishing using image_transport since its not included in the base package. More information [here](http://wiki.ros.org/image_transport), [here](http://wiki.ros.org/compressed_image_transport) and [here](https://answers.ros.org/question/35183/compressed-image-to-image/).
+Copyright © 2022 Intelligent Systems Lab
