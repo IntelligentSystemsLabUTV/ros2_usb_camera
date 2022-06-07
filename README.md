@@ -36,6 +36,10 @@ Configuration files for node parameters can be found in `config`, with some stan
 - `image_width`: image width, defaults to `640`.
 - `is_flipped`: toggles vertical image flipping.
 
+### Camera Calibration
+
+The necessary parameters and camera intrinsics can be acquired from a standard calibration procedure. You can write your own routine for this, e.g. with `OpenCV`, or use the `camera_calibration cameracalibrator` tool as documented [here](https://navigation.ros.org/tutorials/docs/camera_calibration.html).
+
 ## Copyright
 
 Copyright © 2022 Intelligent Systems Lab
