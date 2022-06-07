@@ -90,6 +90,15 @@ void CameraDriverNode::init_parameters()
     true,
     base_topic_name_descriptor_);
 
+  // Best-effort QoS flag
+  declare_bool_parameter(
+    "best_effort_qos",
+    false,
+    "Best-effort QoS flag.",
+    "Cannot be changed.",
+    true,
+    base_topic_name_descriptor_);
+
   // Camera calibration file URL
   declare_string_parameter(
     "camera_calibration_file",
@@ -264,6 +273,16 @@ SetParametersResult CameraDriverNode::on_set_parameters_callback(
       continue;
     }
 
+    // Best-effort QoS flag
+    if (p.get_name() == "best_effort_qos") {
+      if (p.get_type() != ParameterType::PARAMETER_BOOL) {
+        res.set__successful(false);
+        res.set__reason("Invalid parameter type for best_effort_qos");
+        break;
+      }
+      continue;
+    }
+
     // Camera calibration file URL
     if (p.get_name() == "camera_calibration_file") {
       if (p.get_type() != ParameterType::PARAMETER_STRING) {
@@ -347,6 +366,15 @@ SetParametersResult CameraDriverNode::on_set_parameters_callback(
         this->get_logger(),
         "base_topic_name: %s",
         p.as_string().c_str());
+      continue;
+    }
+
+    // Best-effort QoS flag
+    if (p.get_name() == "best_effort_qos") {
+      RCLCPP_INFO(
+        this->get_logger(),
+        "best_effort_qos: %s",
+        p.as_bool() ? "true" : "false");
       continue;
     }
 

@@ -11,6 +11,7 @@ Simple ROS 2 driver node for USB cameras compatible with the `Video4Linux` APIs.
 - ROS 2 component compilation and installation.
 - Optimized memory handling.
 - High-resolution, thread-based camera sampling.
+- Offers both reliable and best-effort transmissions, configurable via node parameters.
 
 ## Usage
 
@@ -18,14 +19,15 @@ The code compiles to both a standalone application executable and a ROS 2 compon
 
 You can use `RViz` to display the frames being streamed:
 
-- topic `Reliability Policy` must be set to `Best Effort`;
-- `Fixed Frame` in `Global Options` must be set to what is the corresponding node parameter has been set to.
+- topic `Reliability Policy` must be set to what the corresponding node parameter has been set to;
+- `Fixed Frame` in `Global Options` must be set to what the corresponding node parameter has been set to.
 
 ### Node Parameters
 
 Configuration files for node parameters can be found in `config`, with some standard default settings. They can be customized, or overridden from command line or launch files.
 
 - `base_topic_name`: base transmission topic name for `image_transport` publishers.
+- `best_effort_qos`: toggles unreliable but faster transmissions.
 - `camera_calibration_file`: camera calibration YAML file URL.
 - `camera_id`: ID of the video capture device to open.
 - `fps`: camera capture rate, defaults to `20`.

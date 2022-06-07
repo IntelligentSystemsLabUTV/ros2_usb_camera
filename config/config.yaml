@@ -1,6 +1,7 @@
 /usb_camera_driver:
   ros__parameters:
     base_topic_name: camera
+    best_effort_qos: true
     camera_calibration_file: file://config/camera.yaml
     camera_id: 0
     fps: 20

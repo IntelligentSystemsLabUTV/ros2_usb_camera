@@ -60,12 +60,27 @@ namespace USBCameraDriver
 {
 
 /**
- * QoS profile for image transmission.
+ * QoS profile for best-effort image transmission.
  */
 static const rmw_qos_profile_t usb_camera_qos_profile = {
   RMW_QOS_POLICY_HISTORY_KEEP_LAST,
   1,
   RMW_QOS_POLICY_RELIABILITY_BEST_EFFORT,
+  RMW_QOS_POLICY_DURABILITY_VOLATILE,
+  RMW_QOS_DEADLINE_DEFAULT,
+  RMW_QOS_LIFESPAN_DEFAULT,
+  RMW_QOS_POLICY_LIVELINESS_SYSTEM_DEFAULT,
+  RMW_QOS_LIVELINESS_LEASE_DURATION_DEFAULT,
+  false
+};
+
+/**
+ * QoS profile for image transmission.
+ */
+static const rmw_qos_profile_t usb_camera_reliable_qos_profile = {
+  RMW_QOS_POLICY_HISTORY_KEEP_LAST,
+  1,
+  RMW_QOS_POLICY_RELIABILITY_RELIABLE,
   RMW_QOS_POLICY_DURABILITY_VOLATILE,
   RMW_QOS_DEADLINE_DEFAULT,
   RMW_QOS_LIFESPAN_DEFAULT,
@@ -98,6 +113,7 @@ private:
 
   /* Node parameters descriptors */
   ParameterDescriptor base_topic_name_descriptor_;
+  ParameterDescriptor be_qos_descriptor_;
   ParameterDescriptor camera_calibration_file_descriptor_;
   ParameterDescriptor camera_id_descriptor_;
   ParameterDescriptor frame_id_descriptor_;

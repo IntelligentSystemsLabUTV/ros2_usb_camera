@@ -71,7 +71,8 @@ CameraDriverNode::CameraDriverNode(const rclcpp::NodeOptions & opts)
   camera_info_pub_ = image_transport::create_camera_publisher(
     this,
     this->get_parameter("base_topic_name").as_string(),
-    usb_camera_qos_profile);
+    this->get_parameter("best_effort_qos").as_bool() ?
+    usb_camera_qos_profile : usb_camera_reliable_qos_profile);
 
   // Get and store current camera info
   camera_info_ = cinfo_manager_->getCameraInfo();
