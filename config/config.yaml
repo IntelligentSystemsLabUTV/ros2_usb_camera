@@ -2,8 +2,10 @@
   ros__parameters:
     base_topic_name: camera
     best_effort_qos: true
+    brightness: 0.0
     camera_calibration_file: file://config/camera.yaml
     camera_id: 0
+    exposure: 0.0
     fps: 20
     frame_id: map
     image_height: 480

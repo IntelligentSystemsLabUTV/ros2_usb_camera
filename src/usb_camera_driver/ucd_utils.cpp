@@ -28,6 +28,7 @@
  * 51 Franklin St, Fifth Floor, Boston, MA 02110-1301 USA.
  */
 
+#include <cfloat>
 #include <cstdint>
 
 #include <usb_camera_driver/usb_camera_driver.hpp>
@@ -99,6 +100,15 @@ void CameraDriverNode::init_parameters()
     true,
     base_topic_name_descriptor_);
 
+  // Brightness
+  declare_double_parameter(
+    "brightness",
+    0.0, -DBL_MAX, DBL_MAX, 0.0,
+    "Image brightness.",
+    "Camera-dependent, 0.0 means auto.",
+    false,
+    exposure_descriptor_);
+
   // Camera calibration file URL
   declare_string_parameter(
     "camera_calibration_file",
@@ -116,6 +126,15 @@ void CameraDriverNode::init_parameters()
     "Cannot be changed.",
     true,
     camera_id_descriptor_);
+
+  // Exposure
+  declare_double_parameter(
+    "exposure",
+    0.0, -DBL_MAX, DBL_MAX, 0.0,
+    "Camera exposure.",
+    "Camera-dependent, 0.0 means auto.",
+    false,
+    exposure_descriptor_);
 
   // RViz frame ID
   declare_string_parameter(
@@ -185,6 +204,39 @@ void CameraDriverNode::declare_bool_parameter(
   descriptor.set__additional_constraints(constraints);
   descriptor.set__read_only(read_only);
   descriptor.set__dynamic_typing(false);
+  this->declare_parameter(name, default_val, descriptor);
+}
+
+/**
+ * @brief Routine to declare a 64-bit floating point node parameter.
+ *
+ * @param name Parameter name.
+ * @param default_val Default value.
+ * @param from Floating point range initial value.
+ * @param to Floating point range final value.
+ * @param step Floating point range step.
+ * @param desc Parameter description.
+ * @param constraints Additional value constraints.
+ * @param read_only Read-only internal flag.
+ * @param descriptor Parameter descriptor.
+ */
+void CameraDriverNode::declare_double_parameter(
+  std::string && name,
+  double default_val, double from, double to, double step,
+  std::string && desc, std::string && constraints,
+  bool read_only, ParameterDescriptor & descriptor)
+{
+  FloatingPointRange param_range{};
+  param_range.set__from_value(from);
+  param_range.set__to_value(to);
+  param_range.set__step(step);
+  descriptor.set__name(name);
+  descriptor.set__type(ParameterType::PARAMETER_DOUBLE);
+  descriptor.set__description(desc);
+  descriptor.set__additional_constraints(constraints);
+  descriptor.set__read_only(read_only);
+  descriptor.set__dynamic_typing(false);
+  descriptor.set__floating_point_range({param_range});
   this->declare_parameter(name, default_val, descriptor);
 }
 
@@ -283,6 +335,16 @@ SetParametersResult CameraDriverNode::on_set_parameters_callback(
       continue;
     }
 
+    // Brightness
+    if (p.get_name() == "brightness") {
+      if (p.get_type() != ParameterType::PARAMETER_DOUBLE) {
+        res.set__successful(false);
+        res.set__reason("Invalid parameter type for brightness");
+        break;
+      }
+      continue;
+    }
+
     // Camera calibration file URL
     if (p.get_name() == "camera_calibration_file") {
       if (p.get_type() != ParameterType::PARAMETER_STRING) {
@@ -298,6 +360,16 @@ SetParametersResult CameraDriverNode::on_set_parameters_callback(
       if (p.get_type() != ParameterType::PARAMETER_INTEGER) {
         res.set__successful(false);
         res.set__reason("Invalid parameter type for camera_id");
+        break;
+      }
+      continue;
+    }
+
+    // Exposure
+    if (p.get_name() == "exposure") {
+      if (p.get_type() != ParameterType::PARAMETER_DOUBLE) {
+        res.set__successful(false);
+        res.set__reason("Invalid parameter type for exposure");
         break;
       }
       continue;
@@ -378,6 +450,21 @@ SetParametersResult CameraDriverNode::on_set_parameters_callback(
       continue;
     }
 
+    // Brightness
+    if (p.get_name() == "brightness") {
+      if (video_cap_.isOpened() && !video_cap_.set(cv::CAP_PROP_BRIGHTNESS, p.as_double())) {
+        RCLCPP_ERROR(this->get_logger(), "Failed to set camera brightness");
+        res.set__successful(false);
+        res.set__reason("cv::VideoCapture::set(CAP_PROP_BRIGHTNESS) failed");
+        break;
+      }
+      RCLCPP_INFO(
+        this->get_logger(),
+        "brightness: %f",
+        p.as_double());
+      continue;
+    }
+
     // Camera calibration file URL
     if (p.get_name() == "camera_calibration_file") {
       RCLCPP_INFO(
@@ -393,6 +480,42 @@ SetParametersResult CameraDriverNode::on_set_parameters_callback(
         this->get_logger(),
         "camera_id: %ld",
         p.as_int());
+      continue;
+    }
+
+    // Exposure
+    if (p.get_name() == "exposure") {
+      if (video_cap_.isOpened()) {
+        bool success;
+        if (p.as_double() == 0.0) {
+          success = video_cap_.set(cv::CAP_PROP_AUTO_EXPOSURE, 3.0);
+          if (!success) {
+            res.set__successful(false);
+            res.set__reason("cv::VideoCapture::set(CAP_PROP_AUTO_EXPOSURE, 0.25) failed");
+            RCLCPP_ERROR(this->get_logger(), "Failed to set camera exposure");
+            break;
+          }
+        } else {
+          success = video_cap_.set(cv::CAP_PROP_AUTO_EXPOSURE, 0.75);
+          if (!success) {
+            res.set__successful(false);
+            res.set__reason("cv::VideoCapture::set(CAP_PROP_AUTO_EXPOSURE, 0.75) failed");
+            RCLCPP_ERROR(this->get_logger(), "Failed to set camera exposure");
+            break;
+          }
+          success = video_cap_.set(cv::CAP_PROP_EXPOSURE, p.as_double());
+          if (!success) {
+            res.set__successful(false);
+            res.set__reason("cv::VideoCapture::set(CAP_PROP_EXPOSURE) failed");
+            RCLCPP_ERROR(this->get_logger(), "Failed to set camera exposure");
+            break;
+          }
+        }
+      }
+      RCLCPP_INFO(
+        this->get_logger(),
+        "exposure: %f",
+        p.as_double());
       continue;
     }
 

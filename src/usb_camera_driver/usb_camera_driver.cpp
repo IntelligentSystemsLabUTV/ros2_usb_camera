@@ -185,8 +185,38 @@ void CameraDriverNode::hw_enable_callback(
       !video_cap_.set(cv::CAP_PROP_FPS, fps_))
     {
       resp->set__success(false);
-      resp->set__message("Failed to open capture device.");
+      resp->set__message("Failed to open capture device");
       return;
+    }
+
+    // Set camera parameters
+    double exposure = this->get_parameter("exposure").as_double();
+    double brightness = this->get_parameter("brightness").as_double();
+    bool success;
+    if (exposure != 0.0) {
+      success = video_cap_.set(cv::CAP_PROP_AUTO_EXPOSURE, 0.75);
+      if (!success) {
+        resp->set__success(false);
+        resp->set__message("cv::VideoCapture::set(CAP_PROP_AUTO_EXPOSURE, 0.75) failed");
+        RCLCPP_ERROR(this->get_logger(), "Failed to set camera exposure");
+        return;
+      }
+      success = video_cap_.set(cv::CAP_PROP_EXPOSURE, exposure);
+      if (!success) {
+        resp->set__success(false);
+        resp->set__message("cv::VideoCapture::set(CAP_PROP_EXPOSURE) failed");
+        RCLCPP_ERROR(this->get_logger(), "Failed to set camera exposure");
+        return;
+      }
+    }
+    if (brightness != 0.0) {
+      success = video_cap_.set(cv::CAP_PROP_BRIGHTNESS, brightness);
+      if (!success) {
+        resp->set__success(false);
+        resp->set__message("cv::VideoCapture::set(CAP_PROP_BRIGHTNESS) failed");
+        RCLCPP_ERROR(this->get_logger(), "Failed to set camera brightness");
+        return;
+      }
     }
 
     stopped_.store(false, std::memory_order_release);
@@ -207,7 +237,7 @@ void CameraDriverNode::hw_enable_callback(
     return;
   } else {
     resp->set__success(false);
-    resp->set__message("Invalid operation.");
+    resp->set__message("Invalid operation");
     return;
   }
 }

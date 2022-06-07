@@ -128,6 +128,7 @@ private:
   ParameterDescriptor be_qos_descriptor_;
   ParameterDescriptor camera_calibration_file_descriptor_;
   ParameterDescriptor camera_id_descriptor_;
+  ParameterDescriptor exposure_descriptor_;
   ParameterDescriptor frame_id_descriptor_;
   ParameterDescriptor fps_descriptor_;
   ParameterDescriptor image_height_descriptor_;
@@ -145,6 +146,11 @@ private:
   void declare_bool_parameter(
     std::string && name,
     bool default_val,
+    std::string && desc, std::string && constraints,
+    bool read_only, ParameterDescriptor & descriptor);
+  void declare_double_parameter(
+    std::string && name,
+    double default_val, double from, double to, double step,
     std::string && desc, std::string && constraints,
     bool read_only, ParameterDescriptor & descriptor);
   void declare_int_parameter(

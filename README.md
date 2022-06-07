@@ -31,13 +31,17 @@ Configuration files for node parameters can be found in `config`, with some stan
 
 - `base_topic_name`: base transmission topic name for `image_transport` publishers.
 - `best_effort_qos`: toggles unreliable but faster transmissions.
+- `brightness`: camera brightness level (hardware-dependent).
 - `camera_calibration_file`: camera calibration YAML file URL.
 - `camera_id`: ID of the video capture device to open.
+- `exposure`: camera exposure time (hardware-dependent).
 - `fps`: camera capture rate, defaults to `20`.
 - `frame_id`: transform frame_id of the camera, defaults to `map`.
 - `image_height`: image height, defaults to `480`.
 - `image_width`: image width, defaults to `640`.
 - `is_flipped`: toggles vertical image flipping.
+
+Keep in mind that hardware-dependent parameters are particularly tricky: they might not be supported, have unusual or even completely different ranges, and require some black magic to be correctly set up. What you see in this code was done to work with some cameras we had at the time, so be prepared to change many things if you want to act on camera hardware settings.
 
 ### Camera Calibration
 
