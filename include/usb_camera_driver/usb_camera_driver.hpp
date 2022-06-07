@@ -47,6 +47,7 @@
 
 #include <image_transport/image_transport.hpp>
 
+#include <opencv2/calib3d.hpp>
 #include <opencv2/core.hpp>
 #include <opencv2/imgproc.hpp>
 #include <opencv2/videoio.hpp>
@@ -103,6 +104,8 @@ private:
   cv::VideoCapture video_cap_;
   cv::Mat frame_;
   cv::Mat flipped_frame_;
+  cv::Mat rectified_frame_;
+  cv::Mat A_, D_;
 
   /* Node parameters */
   std::string frame_id_;
@@ -123,7 +126,8 @@ private:
   ParameterDescriptor is_flipped_descriptor_;
 
   /* image_transport objects */
-  image_transport::CameraPublisher camera_info_pub_;
+  image_transport::CameraPublisher camera_pub_;
+  image_transport::Publisher rect_pub_;
   camera_info_manager::CameraInfo camera_info_;
   std::shared_ptr<camera_info_manager::CameraInfoManager> cinfo_manager_;
 

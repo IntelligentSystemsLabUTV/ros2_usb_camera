@@ -67,15 +67,24 @@ CameraDriverNode::CameraDriverNode(const rclcpp::NodeOptions & opts)
     RCLCPP_ERROR(this->get_logger(), "Failed to get camera info");
   }
 
-  // Create image_transport publisher (this will use all available transports, see docs)
-  camera_info_pub_ = image_transport::create_camera_publisher(
+  // Create image_transport publishers (this will use all available transports, see docs)
+  camera_pub_ = image_transport::create_camera_publisher(
     this,
-    this->get_parameter("base_topic_name").as_string(),
+    "~/" + this->get_parameter("base_topic_name").as_string() + "/image_color",
+    this->get_parameter("best_effort_qos").as_bool() ?
+    usb_camera_qos_profile : usb_camera_reliable_qos_profile);
+  rect_pub_ = image_transport::create_publisher(
+    this,
+    "~/" + this->get_parameter("base_topic_name").as_string() + "/image_rect_color",
     this->get_parameter("best_effort_qos").as_bool() ?
     usb_camera_qos_profile : usb_camera_reliable_qos_profile);
 
   // Get and store current camera info
-  camera_info_ = cinfo_manager_->getCameraInfo();
+  if (cinfo_manager_->isCalibrated()) {
+    camera_info_ = cinfo_manager_->getCameraInfo();
+    A_ = cv::Mat(3, 3, CV_64FC1, camera_info_.k.data());
+    D_ = cv::Mat(1, 5, CV_64FC1, camera_info_.d.data());
+  }
 
   // Start camera sampling thread
   camera_sampling_thread_ = std::thread{
@@ -120,11 +129,19 @@ void CameraDriverNode::camera_sampling_routine()
       rclcpp::Time timestamp = this->get_clock()->now();
 
       // Generate Image message
-      Image::SharedPtr image_msg = nullptr;
+      Image::SharedPtr image_msg = nullptr, rect_image_msg = nullptr;
       if (is_flipped_) {
         cv::flip(frame_, flipped_frame_, 0);
+        if (cinfo_manager_->isCalibrated()) {
+          cv::undistort(flipped_frame_, rectified_frame_, A_, D_);
+          rect_image_msg = frame_to_msg(rectified_frame_);
+        }
         image_msg = frame_to_msg(flipped_frame_);
       } else {
+        if (cinfo_manager_->isCalibrated()) {
+          cv::undistort(frame_, rectified_frame_, A_, D_);
+          rect_image_msg = frame_to_msg(rectified_frame_);
+        }
         image_msg = frame_to_msg(frame_);
       }
       image_msg->header.set__stamp(timestamp);
@@ -136,7 +153,10 @@ void CameraDriverNode::camera_sampling_routine()
       camera_info_msg->header.set__frame_id(frame_id_);
 
       // Publish new frame together with its CameraInfo on all available transports
-      camera_info_pub_.publish(image_msg, camera_info_msg);
+      camera_pub_.publish(image_msg, camera_info_msg);
+      if (cinfo_manager_->isCalibrated()) {
+        rect_pub_.publish(rect_image_msg);
+      }
     } else {
       RCLCPP_INFO(this->get_logger(), "Empty frame");
     }

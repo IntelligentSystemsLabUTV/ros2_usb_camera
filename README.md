@@ -1,12 +1,12 @@
 # ros2_usb_camera
 
-Simple ROS 2 driver node for USB cameras compatible with the `Video4Linux` APIs. Based on `image_transport`, `camera_calibration` and `OpenCV`.
+Simple ROS 2 driver node for USB monocular cameras compatible with the `Video4Linux` APIs. Based on `image_transport`, `camera_calibration` and `OpenCV`.
 
 ## Features
 
 - `CameraInfo` topic.
-- `CompressedImage` topic.
-- `Image` topic.
+- `CompressedImage` topics for both color and rectified-color images.
+- `Image` topics for both color and rectified-color images.
 - Supports namespace and node name remappings, in order to run different cameras with multiple instances of the node.
 - ROS 2 component compilation and installation.
 - Optimized memory handling.
