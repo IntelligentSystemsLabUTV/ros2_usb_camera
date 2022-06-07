@@ -132,12 +132,16 @@ void CameraDriverNode::camera_sampling_routine()
         if (cinfo_manager_->isCalibrated()) {
           cv::undistort(flipped_frame_, rectified_frame_, A_, D_);
           rect_image_msg = frame_to_msg(rectified_frame_);
+          rect_image_msg->header.set__stamp(timestamp);
+          rect_image_msg->header.set__frame_id(frame_id_);
         }
         image_msg = frame_to_msg(flipped_frame_);
       } else {
         if (cinfo_manager_->isCalibrated()) {
           cv::undistort(frame_, rectified_frame_, A_, D_);
           rect_image_msg = frame_to_msg(rectified_frame_);
+          rect_image_msg->header.set__stamp(timestamp);
+          rect_image_msg->header.set__frame_id(frame_id_);
         }
         image_msg = frame_to_msg(frame_);
       }
