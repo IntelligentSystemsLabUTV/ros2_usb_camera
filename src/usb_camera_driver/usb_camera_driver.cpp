@@ -28,8 +28,6 @@
  * 51 Franklin St, Fifth Floor, Boston, MA 02110-1301 USA.
  */
 
-#include <stdexcept>
-
 #include <usb_camera_driver/usb_camera_driver.hpp>
 
 using namespace std::chrono_literals;
@@ -50,16 +48,7 @@ CameraDriverNode::CameraDriverNode(const rclcpp::NodeOptions & opts)
   init_parameters();
 
   // Initialize synchronization primitives
-  is_canceling_.store(false, std::memory_order_release);
-
-  // Open capture device
-  if (!video_cap_.open(this->get_parameter("camera_id").as_int()) ||
-    !video_cap_.set(cv::CAP_PROP_FRAME_WIDTH, image_width_) ||
-    !video_cap_.set(cv::CAP_PROP_FRAME_HEIGHT, image_height_) ||
-    !video_cap_.set(cv::CAP_PROP_FPS, fps_))
-  {
-    throw std::runtime_error("Failed to open and set up capture device");
-  }
+  stopped_.store(true, std::memory_order_release);
 
   // Create and set up CameraInfoManager
   cinfo_manager_ = std::make_shared<camera_info_manager::CameraInfoManager>(this);
@@ -86,10 +75,14 @@ CameraDriverNode::CameraDriverNode(const rclcpp::NodeOptions & opts)
     D_ = cv::Mat(1, 5, CV_64FC1, camera_info_.d.data());
   }
 
-  // Start camera sampling thread
-  camera_sampling_thread_ = std::thread{
-    &CameraDriverNode::camera_sampling_routine,
-    this};
+  // Initialize service servers
+  hw_enable_server_ = this->create_service<SetBool>(
+    "~/enable_camera",
+    std::bind(
+      &CameraDriverNode::hw_enable_callback,
+      this,
+      std::placeholders::_1,
+      std::placeholders::_2));
 }
 
 /**
@@ -98,11 +91,15 @@ CameraDriverNode::CameraDriverNode(const rclcpp::NodeOptions & opts)
 CameraDriverNode::~CameraDriverNode()
 {
   // Stop camera sampling thread
-  is_canceling_.store(true, std::memory_order_release);
-  camera_sampling_thread_.join();
-
-  // Close video capture device
-  video_cap_.release();
+  bool expected = false;
+  if (stopped_.compare_exchange_strong(
+      expected,
+      true,
+      std::memory_order_release,
+      std::memory_order_acquire))
+  {
+    camera_sampling_thread_.join();
+  }
 }
 
 /**
@@ -117,7 +114,7 @@ void CameraDriverNode::camera_sampling_routine()
 
   while (true) {
     // Check if thread cancellation has been requested
-    if (is_canceling_.load(std::memory_order_acquire)) {
+    if (stopped_.load(std::memory_order_acquire)) {
       break;
     }
 
@@ -164,7 +161,55 @@ void CameraDriverNode::camera_sampling_routine()
     sampling_timer.sleep();
   }
 
+  // Close video capture device
+  video_cap_.release();
+
   RCLCPP_WARN(this->get_logger(), "Camera sampling thread stopped");
+}
+
+/**
+ * @brief Toggles the video capture device and related sampling thread.
+ *
+ * @param req Service request to parse.
+ * @param resp Service response to populate.
+ */
+void CameraDriverNode::hw_enable_callback(
+  SetBool::Request::SharedPtr req,
+  SetBool::Response::SharedPtr resp)
+{
+  if (req->data && stopped_.load(std::memory_order_acquire)) {
+    // Open capture device
+    if (!video_cap_.open(this->get_parameter("camera_id").as_int()) ||
+      !video_cap_.set(cv::CAP_PROP_FRAME_WIDTH, image_width_) ||
+      !video_cap_.set(cv::CAP_PROP_FRAME_HEIGHT, image_height_) ||
+      !video_cap_.set(cv::CAP_PROP_FPS, fps_))
+    {
+      resp->set__success(false);
+      resp->set__message("Failed to open capture device.");
+      return;
+    }
+
+    stopped_.store(false, std::memory_order_release);
+
+    // Start camera sampling thread
+    camera_sampling_thread_ = std::thread{
+      &CameraDriverNode::camera_sampling_routine,
+      this};
+
+    resp->set__success(true);
+    resp->set__message("");
+    return;
+  } else if (!req->data && !stopped_.load(std::memory_order_acquire)) {
+    stopped_.store(true, std::memory_order_release);
+    camera_sampling_thread_.join();
+    resp->set__success(true);
+    resp->set__message("");
+    return;
+  } else {
+    resp->set__success(false);
+    resp->set__message("Invalid operation.");
+    return;
+  }
 }
 
 } // namespace USBCameraDriver

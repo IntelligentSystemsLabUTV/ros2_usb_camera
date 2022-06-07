@@ -27,6 +27,7 @@ find_package(rclcpp REQUIRED)
 find_package(rclcpp_components REQUIRED)
 find_package(sensor_msgs REQUIRED)
 find_package(std_msgs REQUIRED)
+find_package(std_srvs REQUIRED)
 find_package(Threads REQUIRED)
 
 # USB Camera Driver node
@@ -49,6 +50,7 @@ ament_target_dependencies(
   "rclcpp_components"
   "sensor_msgs"
   "std_msgs"
+  "std_srvs"
 )
 rclcpp_components_register_nodes(usb_camera_driver "USBCameraDriver::CameraDriverNode")
 set(node_plugins "${node_plugins}USBCameraDriver::CameraDriverNode;$<TARGET_FILE:usb_camera_driver>\n")

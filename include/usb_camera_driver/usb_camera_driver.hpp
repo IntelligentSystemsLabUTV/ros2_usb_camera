@@ -43,6 +43,8 @@
 #include <sensor_msgs/msg/image.hpp>
 #include <sensor_msgs/image_encodings.hpp>
 
+#include <std_srvs/srv/set_bool.hpp>
+
 #include <camera_info_manager/camera_info_manager.hpp>
 
 #include <image_transport/image_transport.hpp>
@@ -56,6 +58,7 @@
 
 using namespace rcl_interfaces::msg;
 using namespace sensor_msgs::msg;
+using namespace std_srvs::srv;
 
 namespace USBCameraDriver
 {
@@ -114,6 +117,12 @@ private:
   int64_t image_width_ = 0;
   bool is_flipped_ = false;
 
+  /* Service servers */
+  rclcpp::Service<SetBool>::SharedPtr hw_enable_server_;
+
+  /* Service callbacks */
+  void hw_enable_callback(SetBool::Request::SharedPtr req, SetBool::Response::SharedPtr resp);
+
   /* Node parameters descriptors */
   ParameterDescriptor base_topic_name_descriptor_;
   ParameterDescriptor be_qos_descriptor_;
@@ -160,7 +169,7 @@ private:
   void camera_sampling_routine();
 
   /* Synchronization primitives */
-  std::atomic<bool> is_canceling_;
+  std::atomic<bool> stopped_;
 };
 
 } // namespace USBCameraDriver

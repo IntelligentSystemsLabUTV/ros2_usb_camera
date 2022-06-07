@@ -7,6 +7,7 @@ Simple ROS 2 driver node for USB monocular cameras compatible with the `Video4Li
 - `CameraInfo` topic.
 - `CompressedImage` topics for both color and rectified-color images.
 - `Image` topics for both color and rectified-color images.
+- Hardware enable service, based on `std_srvs/srv/SetBool`.
 - Supports namespace and node name remappings, in order to run different cameras with multiple instances of the node.
 - ROS 2 component compilation and installation.
 - Optimized memory handling.
@@ -16,6 +17,8 @@ Simple ROS 2 driver node for USB monocular cameras compatible with the `Video4Li
 ## Usage
 
 The code compiles to both a standalone application executable and a ROS 2 component, and both can be run easily. There is also a launch file for the standalone application.
+
+Once the node is started, the video capture device will be disabled by default. To toggle it, send a request on the `~/enable_camera` service specifying either `True` or `False` in the `data` field.
 
 You can use `RViz` to display the frames being streamed:
 
