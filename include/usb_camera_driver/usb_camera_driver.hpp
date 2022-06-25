@@ -109,6 +109,7 @@ private:
   cv::Mat flipped_frame_;
   cv::Mat rectified_frame_;
   cv::Mat A_, D_;
+  cv::Mat map1_, map2_;
 
   /* Node parameters */
   std::string frame_id_;

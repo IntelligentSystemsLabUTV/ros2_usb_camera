@@ -68,11 +68,20 @@ CameraDriverNode::CameraDriverNode(const rclcpp::NodeOptions & opts)
     this->get_parameter("best_effort_qos").as_bool() ?
     usb_camera_qos_profile : usb_camera_reliable_qos_profile);
 
-  // Get and store current camera info
+  // Get and store current camera info and compute undistorsion and rectification maps
   if (cinfo_manager_->isCalibrated()) {
     camera_info_ = cinfo_manager_->getCameraInfo();
     A_ = cv::Mat(3, 3, CV_64FC1, camera_info_.k.data());
     D_ = cv::Mat(1, 5, CV_64FC1, camera_info_.d.data());
+    cv::initUndistortRectifyMap(
+      A_,
+      D_,
+      cv::Mat::eye(3, 3, CV_64F),
+      A_,
+      cv::Size(image_width_, image_height_),
+      CV_16SC2,
+      map1_,
+      map2_);
   }
 
   // Initialize service servers
@@ -130,7 +139,13 @@ void CameraDriverNode::camera_sampling_routine()
       if (is_flipped_) {
         cv::flip(frame_, flipped_frame_, 0);
         if (cinfo_manager_->isCalibrated()) {
-          cv::undistort(flipped_frame_, rectified_frame_, A_, D_);
+          cv::remap(
+            flipped_frame_,
+            rectified_frame_,
+            map1_,
+            map2_,
+            cv::InterpolationFlags::INTER_LINEAR,
+            cv::BorderTypes::BORDER_CONSTANT);
           rect_image_msg = frame_to_msg(rectified_frame_);
           rect_image_msg->header.set__stamp(timestamp);
           rect_image_msg->header.set__frame_id(frame_id_);
@@ -138,7 +153,13 @@ void CameraDriverNode::camera_sampling_routine()
         image_msg = frame_to_msg(flipped_frame_);
       } else {
         if (cinfo_manager_->isCalibrated()) {
-          cv::undistort(frame_, rectified_frame_, A_, D_);
+          cv::remap(
+            frame_,
+            rectified_frame_,
+            map1_,
+            map2_,
+            cv::InterpolationFlags::INTER_LINEAR,
+            cv::BorderTypes::BORDER_CONSTANT);
           rect_image_msg = frame_to_msg(rectified_frame_);
           rect_image_msg->header.set__stamp(timestamp);
           rect_image_msg->header.set__frame_id(frame_id_);
