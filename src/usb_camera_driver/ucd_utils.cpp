@@ -30,6 +30,7 @@
 
 #include <cfloat>
 #include <cstdint>
+#include <cstring>
 
 #include <usb_camera_driver/usb_camera_driver.hpp>
 
@@ -65,7 +66,7 @@ Image::SharedPtr CameraDriverNode::frame_to_msg(cv::Mat & frame)
   // Copy frame data (this avoids the obsolete cv_bridge)
   size_t size = ros_image->step * frame.rows;
   ros_image->data.resize(size);
-  memcpy(reinterpret_cast<char *>(&(ros_image->data[0])), frame.data, size);
+  memcpy(ros_image->data.data(), frame.data, size);
 
   return ros_image;
 }
