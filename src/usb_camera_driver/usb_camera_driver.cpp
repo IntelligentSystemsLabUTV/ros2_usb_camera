@@ -52,6 +52,7 @@ CameraDriverNode::CameraDriverNode(const rclcpp::NodeOptions & opts)
 
   // Create and set up CameraInfoManager
   cinfo_manager_ = std::make_shared<camera_info_manager::CameraInfoManager>(this);
+  cinfo_manager_->setCameraName(this->get_parameter("camera_name").as_string());
   if (!cinfo_manager_->loadCameraInfo(this->get_parameter("camera_calibration_file").as_string())) {
     RCLCPP_ERROR(this->get_logger(), "Failed to get camera info");
   }

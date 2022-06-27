@@ -5,6 +5,7 @@
     brightness: 0.0
     camera_calibration_file: file://config/camera.yaml
     camera_id: 0
+    camera_name: camera
     exposure: 0.0
     fps: 20
     frame_id: map

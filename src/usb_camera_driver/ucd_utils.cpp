@@ -128,6 +128,15 @@ void CameraDriverNode::init_parameters()
     true,
     camera_id_descriptor_);
 
+  // Camera name
+  declare_string_parameter(
+    "camera_name",
+    "camera",
+    "Camera name from the configuration file.",
+    "Cannot be changed.",
+    true,
+    camera_name_descriptor_);
+
   // Exposure
   declare_double_parameter(
     "exposure",
@@ -366,6 +375,16 @@ SetParametersResult CameraDriverNode::on_set_parameters_callback(
       continue;
     }
 
+    // Camera name
+    if (p.get_name() == "camera_name") {
+      if (p.get_type() != ParameterType::PARAMETER_STRING) {
+        res.set__successful(false);
+        res.set__reason("Invalid parameter type for camera_name");
+        break;
+      }
+      continue;
+    }
+
     // Exposure
     if (p.get_name() == "exposure") {
       if (p.get_type() != ParameterType::PARAMETER_DOUBLE) {
@@ -481,6 +500,15 @@ SetParametersResult CameraDriverNode::on_set_parameters_callback(
         this->get_logger(),
         "camera_id: %ld",
         p.as_int());
+      continue;
+    }
+
+    // Camera name
+    if (p.get_name() == "camera_name") {
+      RCLCPP_INFO(
+        this->get_logger(),
+        "camera_name: %s",
+        p.as_string().c_str());
       continue;
     }
 

@@ -129,6 +129,7 @@ private:
   ParameterDescriptor be_qos_descriptor_;
   ParameterDescriptor camera_calibration_file_descriptor_;
   ParameterDescriptor camera_id_descriptor_;
+  ParameterDescriptor camera_name_descriptor_;
   ParameterDescriptor exposure_descriptor_;
   ParameterDescriptor frame_id_descriptor_;
   ParameterDescriptor fps_descriptor_;
