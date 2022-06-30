@@ -1,57 +1,52 @@
-# ROS2 USB Camera Node
+# ros2_usb_camera
 
-Its based on both the image_tools cam2image demos for ROS2 as well as the libuvc and usb_cam project for ROS1.
+Simple ROS 2 driver node for USB monocular cameras compatible with the `Video4Linux` APIs. Based on `image_transport`, `camera_calibration` and `OpenCV`.
 
-Features
-- CameraInfo available
-- CompressedImage topic (see compressed images for republishing using image_transport)
-- Image topic
-- Select camera (running the node for each camera connected)
+## Features
 
-There might be major changes to the code as it is a WIP. This is a simple camera driver using OpenCV. With this comes less flexibility for custom camera settings etc but simple to setup and use. If you have more complex requirements I've listed some alternate packages in the Alternate packages section.
-
-
-### Topics
-- `/camera_info` - topic for camera info
-- `/image_raw` - topic for raw image data
-
-## Installation
-
-Make sure to run setup.bash and local_setup.bash for all dependencies or symlink them into the repo.
-
-Run
-
-`colcon build`
+- `CameraInfo` topic.
+- `CompressedImage` topics for both color and rectified-color images.
+- `Image` topics for both color and rectified-color images.
+- Hardware enable service, based on `std_srvs/srv/SetBool`.
+- Supports namespace and node name remappings, in order to run different cameras with multiple instances of the node.
+- ROS 2 component compilation and installation.
+- Optimized memory handling.
+- High-resolution, thread-based camera sampling.
+- Offers both reliable and best-effort transmissions, configurable via node parameters.
 
 ## Usage
 
-`ros2 run usb_camera_driver usb_camera_driver_node __ns:=/<your namespace> --ros-args -p camera_calibration_file:=file:///absolute_path_to_file/camera.yaml -p image_height:=480 -p image_width:=640 -p fps:=30.0 -p frame_id:=camera -p camera_id:=2`
+The code compiles to both a standalone application executable and a ROS 2 component, and both can be run easily. There is also a launch file for the standalone application.
 
-Configuration file is not read at all for parameters like fps, frame_id and camera_id. These must be passed from command line:
-- `frame_id` -> transform frame_id of the camera, defaults to "camera"
-- `image_width` -> image width (1280 default)
-- `image_height` -> image height (720 default)
-- `fps` -> video fps (10 default)
-- `camera_id` -> id of camera to capture (0 - 100, 0 default)
+Once the node is started, the video capture device will be disabled by default. To toggle it, send a request on the `~/enable_camera` service specifying either `True` or `False` in the `data` field.
 
-You can use rviz2 to display the camera frames. Please select as realiability policy "Best effort". As Fixed Frame Global Options, please select "camera".
+You can use `RViz` to display the frames being streamed:
 
-### Calibration files
-To use the camera info functionality you need to load a file from the camera_calibration (https://github.com/ros-perception/image_pipeline/tree/ros2/camera_calibration) library and put it in/name it `file:///Users/<youruser>/.ros/camera_info/camera.yaml`
+- topic `Reliability Policy` must be set to what the corresponding node parameter has been set to;
+- `Fixed Frame` in `Global Options` must be set to what the corresponding node parameter has been set to.
 
+### Node Parameters
 
-### Compressed images
+Configuration files for node parameters can be found in `config`, with some standard default settings. They can be customized, or overridden from command line or launch files.
 
-To get compressed images (works seamlessly with web streaming) republish the topic using image_transport which is available for ROS2.
+- `base_topic_name`: base transmission topic name for `image_transport` publishers.
+- `best_effort_qos`: toggles unreliable but faster transmissions.
+- `brightness`: camera brightness level (hardware-dependent).
+- `camera_calibration_file`: camera calibration YAML file URL.
+- `camera_id`: ID of the video capture device to open.
+- `exposure`: camera exposure time (hardware-dependent).
+- `fps`: camera capture rate, defaults to `20`.
+- `frame_id`: transform frame_id of the camera, defaults to `map`.
+- `image_height`: image height, defaults to `480`.
+- `image_width`: image width, defaults to `640`.
+- `is_flipped`: toggles vertical image flipping.
 
-`ros2 run image_transport republish raw in:=image_raw compressed out:=image_raw_compressed`
+Keep in mind that hardware-dependent parameters are particularly tricky: they might not be supported, have unusual or even completely different ranges, and require some black magic to be correctly set up. What you see in this code was done to work with some cameras we had at the time, so be prepared to change many things if you want to act on camera hardware settings.
 
-Make sure to link/install https://github.com/ros-perception/image_transport_plugins/tree/ros2 before to enable compressed image republishing using image_transport since its not included in the base package. More information here http://wiki.ros.org/image_transport, here http://wiki.ros.org/compressed_image_transport and here https://answers.ros.org/question/35183/compressed-image-to-image/
+### Camera Calibration
 
-## Alternate packages
-Other camera packages in ROS2 now available: 
+The necessary parameters and camera intrinsics can be acquired from a standard calibration procedure. You can write your own routine for this, e.g. with `OpenCV`, or use the `camera_calibration cameracalibrator` tool as documented [here](https://navigation.ros.org/tutorials/docs/camera_calibration.html).
 
-- https://github.com/ros-drivers/usb_cam/tree/ros2
+## Copyright
 
-## References
-https://github.com/ros-perception/vision_opencv/tree/ros2
+Copyright © 2022 Intelligent Systems Lab
