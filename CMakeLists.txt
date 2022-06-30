@@ -51,22 +51,48 @@ add_executable(usb_camera_driver_node
 target_link_libraries(usb_camera_driver_node
   usb_camera_driver
 )
+rclcpp_components_register_nodes(usb_camera_driver "USBCameraDriver::CameraDriverNode")
+set(node_plugins "${node_plugins}USBCameraDriver::CameraDriverNode;$<TARGET_FILE:usb_camera_driver>\n")
 
-ament_target_dependencies(usb_camera_driver_node
+# USB Camera standalone application
+add_executable(usb_camera_app
+  src/ucd_app.cpp)
+target_include_directories(usb_camera_app PUBLIC
+  $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
+  $<INSTALL_INTERFACE:include>)
+target_link_libraries(usb_camera_app usb_camera_driver)
+ament_target_dependencies(
+  usb_camera_app
+  "rclcpp")
+
+add_executable(calibrator
+  src/calibrator/calibrator_app.cpp
+  src/calibrator/calibrator.cpp)
+
+target_include_directories(calibrator PUBLIC
+  $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
+  $<INSTALL_INTERFACE:include>)
+
+ament_target_dependencies(
+  calibrator
+  "image_transport"
+  "OpenCV"
   "rclcpp"
-)
-
-install(TARGETS
-  usb_camera_driver
+  "sensor_msgs")
+    
+# usb_camera_driver component
+install(TARGETS usb_camera_driver
   ARCHIVE DESTINATION lib
   LIBRARY DESTINATION lib
   RUNTIME DESTINATION bin
 )
 
-install(TARGETS
-  usb_camera_driver_node
-  DESTINATION lib/${PROJECT_NAME}
-)
+install(TARGETS calibrator
+  DESTINATION lib/${PROJECT_NAME})
+
+# usb_camera app
+install(TARGETS usb_camera_app
+  DESTINATION lib/${PROJECT_NAME})
 
 # Install launch files.
 install(DIRECTORY
