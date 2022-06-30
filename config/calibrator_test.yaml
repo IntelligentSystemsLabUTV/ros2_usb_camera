@@ -1,0 +1,4 @@
+/calibrator:
+  ros__parameters:
+    aruco_size: 0.155
+    calibration_hgt: 0.6
