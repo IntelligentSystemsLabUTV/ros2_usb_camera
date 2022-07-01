@@ -69,14 +69,19 @@ private:
         double default_val, double from, double to, double step,
         std::string && desc, std::string && constraints,
         bool read_only, ParameterDescriptor & descriptor);
+    void declare_string_parameter(
+        std::string && name, std::string default_val, std::string && desc,
+        std::string && constraints, bool read_only, ParameterDescriptor & descriptor);
 
     /* Node parameters descriptors */
     ParameterDescriptor aruco_size_descriptor_;
     ParameterDescriptor calibration_hgt_descriptor_;
+    ParameterDescriptor bottom_camera_topic_name_descriptor_;
 
     /* Node parameters */
     double aruco_size = 0.0; // m
     double calibration_hgt = 0.0; // m
+    std::string bottom_camera_topic_name; 
 
     /* Parameters callback */
     OnSetParametersCallbackHandle::SharedPtr on_set_params_chandle_;

@@ -1,4 +1,5 @@
 /calibrator:
   ros__parameters:
-    aruco_size: 0.155
-    calibration_hgt: 0.6
+    aruco_size: 0.5
+    calibration_hgt: 2.0
+    bottom_camera_topic_name: /r200_down/r200_sensor_depth/image_raw

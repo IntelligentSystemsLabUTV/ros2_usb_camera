@@ -68,15 +68,24 @@ CalibratorNode::CalibratorNode(const rclcpp::NodeOptions & node_options)
         false,
         calibration_hgt_descriptor_);
 
+    // Bottom camera topic name
+    declare_string_parameter(
+        "bottom_camera_topic_name",
+        "/usb_camera_driver/bottom_camera/image_rect_color",
+        "Bottom camera topic name.",
+        "Cannot be changed.",
+        true,
+        bottom_camera_topic_name_descriptor_);
+
     // Initialize topic subscription
     camera_data_sub_ptr_ = image_transport::create_camera_subscription(
                                 this,
-                                "/usb_camera_driver/bottom_camera/image_rect_color",
+                                bottom_camera_topic_name,
                                 std::bind(&CalibratorNode::camera_data_clbk,
                                         this,
                                         std::placeholders::_1,
                                         std::placeholders::_2),
-                                "compressed",
+                                "raw",
                                 usb_camera_qos_profile);
 
     RCLCPP_INFO(this->get_logger(), "Node initialized");
@@ -163,6 +172,29 @@ void CalibratorNode::declare_double_parameter(
 }
 
 /**
+ * @brief Routine to declare a string node parameter.
+ *
+ * @param name Parameter name.
+ * @param default_val Default value.
+ * @param desc Parameter description.
+ * @param constraints Additional value constraints.
+ * @param read_only Read-only internal flag.
+ * @param descriptor Parameter descriptor.
+ */
+void CalibratorNode::declare_string_parameter(
+  std::string && name, std::string default_val, std::string && desc,
+  std::string && constraints, bool read_only, ParameterDescriptor & descriptor)
+{
+  descriptor.set__name(name);
+  descriptor.set__type(ParameterType::PARAMETER_STRING);
+  descriptor.set__description(desc);
+  descriptor.set__additional_constraints(constraints);
+  descriptor.set__read_only(read_only);
+  descriptor.set__dynamic_typing(false);
+  this->declare_parameter(name, default_val, descriptor);
+}
+
+/**
  * @brief Parameters update validation callback.
  *
  * @param params Vector of parameters for which a change has been requested.
@@ -198,6 +230,16 @@ SetParametersResult CalibratorNode::on_set_parameters_callback(
             }
             continue;
         }
+
+        // Bottom camera topic name
+        if (p.get_name() == "bottom_camera_topic_name") {
+            if (p.get_type() != ParameterType::PARAMETER_STRING) {
+                res.set__successful(false);
+                res.set__reason("Invalid parameter type for file_path");
+                break;
+            }
+            continue;
+        }
     }
 
     if (!res.successful) {
@@ -222,8 +264,18 @@ SetParametersResult CalibratorNode::on_set_parameters_callback(
             calibration_hgt = p.as_double();
             RCLCPP_INFO(
                 this->get_logger(),
-                "calibration_hgt: %f m/s",
+                "calibration_hgt: %f m",
                 calibration_hgt);
+            continue;
+        }
+
+        // Bottom camera topic name
+        if (p.get_name() == "bottom_camera_topic_name") {
+            bottom_camera_topic_name = p.as_string();
+            RCLCPP_INFO(
+                this->get_logger(),
+                "bottom_camera_topic_name: %s",
+                bottom_camera_topic_name.c_str());
             continue;
         }
     }
