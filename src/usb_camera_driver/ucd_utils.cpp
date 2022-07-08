@@ -66,7 +66,7 @@ Image::SharedPtr CameraDriverNode::frame_to_msg(cv::Mat & frame)
   // Copy frame data (this avoids the obsolete cv_bridge)
   size_t size = ros_image->step * frame.rows;
   ros_image->data.resize(size);
-  memcpy(ros_image->data.data(), frame.data, size);
+  std::memcpy(ros_image->data.data(), frame.data, size);
 
   return ros_image;
 }
