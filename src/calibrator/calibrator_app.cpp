@@ -1,11 +1,15 @@
 /**
- * ROS 2 USB Camera standalone application.
+ * ROS 2 USB Camera Calibrator application.
  *
- * Roberto Masocco <robmasocco@gmail.com>
  * Lorenzo Bianchi <lnz.bnc@gmail.com>
+ * Roberto Masocco <robmasocco@gmail.com>
  * Intelligent Systems Lab <isl.torvergata@gmail.com>
  *
- * June 30, 2022
+ * July 10, 2022
+ */
+
+/**
+ * Copyright © 2022 Intelligent Systems Lab
  */
 
 /**
@@ -25,11 +29,9 @@
  */
 
 #define MODULE_NAME "calibrator_app"
-#define UNUSED(arg) (void)(arg)
 
 #include <cstdio>
 #include <cstdlib>
-#include <csignal>
 #include <iostream>
 
 #include <sys/types.h>
@@ -43,35 +45,30 @@ using namespace Calibrator;
 
 int main(int argc, char ** argv)
 {
-    // Disable I/O buffering
-    if (setvbuf(stdout, NULL, _IONBF, 0)) {
-        RCLCPP_FATAL(
-        rclcpp::get_logger(MODULE_NAME),
-        "Failed to set I/O buffering");
-        exit(EXIT_FAILURE);
-    }
+  // Disable I/O buffering
+  if (setvbuf(stdout, NULL, _IONBF, 0)) {
+    RCLCPP_FATAL(
+      rclcpp::get_logger(MODULE_NAME),
+      "Failed to set I/O buffering");
+    exit(EXIT_FAILURE);
+  }
 
-    // Create and initialize ROS 2 context
-    rclcpp::init(argc, argv);
+  // Create and initialize ROS 2 context
+  rclcpp::init(argc, argv);
 
-    // Initialize ROS 2 node
-    auto calibrator_node = std::make_shared<CalibratorNode>();
+  // Initialize ROS 2 node
+  auto calibrator_node = std::make_shared<CalibratorNode>();
 
-    // Create and configure executor
-    auto executor = std::make_shared<rclcpp::executors::MultiThreadedExecutor>();
-    executor->add_node(calibrator_node);
+  RCLCPP_WARN(
+    rclcpp::get_logger(MODULE_NAME),
+    "(%d) " MODULE_NAME " online",
+    getpid());
 
-    RCLCPP_WARN(
-        rclcpp::get_logger(MODULE_NAME),
-        "(%d) " MODULE_NAME " online",
-        getpid());
+  // Spin on the node
+  rclcpp::spin(calibrator_node);
 
-    // Spin the executor
-    executor->spin();
-
-    // Destroy ROS 2 node and context
-    calibrator_node.reset();
-    rclcpp::shutdown();
-
-    exit(EXIT_SUCCESS);
+  // Terminate node and application
+  calibrator_node.reset();
+  rclcpp::shutdown();
+  exit(EXIT_SUCCESS);
 }

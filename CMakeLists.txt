@@ -66,32 +66,32 @@ ament_target_dependencies(
   usb_camera_app
   "rclcpp")
 
+# Calibrator application
 add_executable(calibrator
   src/calibrator/calibrator_app.cpp
   src/calibrator/calibrator.cpp)
-
 target_include_directories(calibrator PUBLIC
   $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
   $<INSTALL_INTERFACE:include>)
-
 ament_target_dependencies(
   calibrator
   "image_transport"
   "OpenCV"
   "rclcpp"
   "sensor_msgs")
-    
+
 # usb_camera_driver component
 install(TARGETS usb_camera_driver
   ARCHIVE DESTINATION lib
   LIBRARY DESTINATION lib
   RUNTIME DESTINATION bin)
 
-install(TARGETS calibrator
-  DESTINATION lib/${PROJECT_NAME})
-
 # usb_camera app
 install(TARGETS usb_camera_app
+  DESTINATION lib/${PROJECT_NAME})
+
+# calibrator app
+install(TARGETS calibrator
   DESTINATION lib/${PROJECT_NAME})
 
 # Launch files

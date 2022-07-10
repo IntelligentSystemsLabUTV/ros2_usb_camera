@@ -13,6 +13,7 @@ Simple ROS 2 driver node for USB monocular cameras compatible with the `Video4Li
 - Optimized memory handling.
 - High-resolution, thread-based camera sampling.
 - Offers both reliable and best-effort transmissions, configurable via node parameters.
+- `calibrator` node as standalone ROS 2 executable, to perform nonstandard calibration routines.
 
 ## Usage
 
@@ -46,6 +47,12 @@ Keep in mind that hardware-dependent parameters are particularly tricky: they mi
 ### Camera Calibration
 
 The necessary parameters and camera intrinsics can be acquired from a standard calibration procedure. You can write your own routine for this, e.g. with `OpenCV`, or use the `camera_calibration cameracalibrator` tool as documented [here](https://navigation.ros.org/tutorials/docs/camera_calibration.html).
+
+### Calibrator Application
+
+If you need to perform some additional calibration steps, you can encode them in the `CalibratorNode`, part of the `calibrator` standalone application. The node structure is straightforward: parameters are defined and used in the same way, as well as launch files, and everything happens in an Image callback. You can set the name of the topic and the transport you prefer, and define your additional routine inside the `image_transport` subscriber callback. You can also set new parameters as you like.
+
+Currently, as an example, the node computes the camera focal distance in pixels as part of the [Pinhole Camera Model](https://pyimagesearch.com/2015/01/19/find-distance-camera-objectmarker-using-python-opencv/), using an [ArUco](https://docs.opencv.org/4.x/d5/dae/tutorial_aruco_detection.html) marker of known size placed at a known distance from the camera.
 
 ## Copyright
 
