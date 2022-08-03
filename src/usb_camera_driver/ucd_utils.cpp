@@ -56,7 +56,7 @@ Image::SharedPtr CameraDriverNode::frame_to_msg(cv::Mat & frame)
   // Set frame-relevant image contents
   ros_image->set__width(frame.cols);
   ros_image->set__height(frame.rows);
-  ros_image->set__encoding("bgr8");
+  ros_image->set__encoding(sensor_msgs::image_encodings::BGR8);
   ros_image->set__step(frame.cols * frame.elemSize());
 
   // Check data endianness
