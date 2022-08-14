@@ -212,7 +212,7 @@ void CameraDriverNode::hw_enable_callback(
         std::memory_order_acquire))
     {
       // Open capture device
-      if (!video_cap_.open(this->get_parameter("camera_id").as_int()) ||
+      if (!video_cap_.open(this->get_parameter("camera_id").as_int(), cv::CAP_V4L2) ||
         !video_cap_.set(cv::CAP_PROP_FRAME_WIDTH, image_width_) ||
         !video_cap_.set(cv::CAP_PROP_FRAME_HEIGHT, image_height_) ||
         !video_cap_.set(cv::CAP_PROP_FPS, fps_))
