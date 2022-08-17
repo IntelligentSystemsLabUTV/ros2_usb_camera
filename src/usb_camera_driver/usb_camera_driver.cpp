@@ -110,6 +110,8 @@ CameraDriverNode::~CameraDriverNode()
   {
     camera_sampling_thread_.join();
   }
+  camera_pub_.shutdown();
+  rect_pub_.shutdown();
 }
 
 /**
