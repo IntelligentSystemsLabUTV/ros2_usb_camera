@@ -86,7 +86,7 @@ void CameraDriverNode::init_parameters()
   // Base topic name
   declare_string_parameter(
     "base_topic_name",
-    "~/image_color",
+    "camera",
     "image_transport base topic name.",
     "Cannot be changed.",
     true,
