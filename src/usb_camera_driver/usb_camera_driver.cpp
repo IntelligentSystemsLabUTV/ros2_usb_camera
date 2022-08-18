@@ -50,6 +50,15 @@ CameraDriverNode::CameraDriverNode(const rclcpp::NodeOptions & opts)
   // Initialize synchronization primitives
   stopped_.store(true, std::memory_order_release);
 
+#ifdef WITH_CUDA
+  // Check for GPU device availability
+  if (!cv::cuda::getCudaEnabledDeviceCount()) {
+    RCLCPP_FATAL(this->get_logger(), "No GPU device found");
+    throw std::runtime_error("No GPU device found");
+  }
+  RCLCPP_INFO(this->get_logger(), "GPU device available");
+#endif
+
   // Create and set up CameraInfoManager
   cinfo_manager_ = std::make_shared<camera_info_manager::CameraInfoManager>(this);
   cinfo_manager_->setCameraName(this->get_parameter("camera_name").as_string());
@@ -74,6 +83,19 @@ CameraDriverNode::CameraDriverNode(const rclcpp::NodeOptions & opts)
     camera_info_ = cinfo_manager_->getCameraInfo();
     A_ = cv::Mat(3, 3, CV_64FC1, camera_info_.k.data());
     D_ = cv::Mat(1, 5, CV_64FC1, camera_info_.d.data());
+#ifdef WITH_CUDA
+    cv::initUndistortRectifyMap(
+      A_,
+      D_,
+      cv::Mat::eye(3, 3, CV_64F),
+      A_,
+      cv::Size(image_width_, image_height_),
+      CV_32FC1,
+      map1_,
+      map2_);
+    gpu_map1_.upload(map1_);
+    gpu_map2_.upload(map2_);
+#else
     cv::initUndistortRectifyMap(
       A_,
       D_,
@@ -83,6 +105,7 @@ CameraDriverNode::CameraDriverNode(const rclcpp::NodeOptions & opts)
       CV_16SC2,
       map1_,
       map2_);
+#endif
   }
 
   // Initialize service servers
@@ -93,6 +116,8 @@ CameraDriverNode::CameraDriverNode(const rclcpp::NodeOptions & opts)
       this,
       std::placeholders::_1,
       std::placeholders::_2));
+
+  RCLCPP_INFO(this->get_logger(), "Node initialized");
 }
 
 /**
@@ -140,8 +165,24 @@ void CameraDriverNode::camera_sampling_routine()
       // Generate Image message
       Image::SharedPtr image_msg = nullptr, rect_image_msg = nullptr;
       if (is_flipped_) {
+#ifdef WITH_CUDA
+        gpu_frame_.upload(frame_);
+        cv::cuda::flip(gpu_frame_, gpu_flipped_frame_, 0);
+        gpu_flipped_frame_.download(flipped_frame_);
+#else
         cv::flip(frame_, flipped_frame_, 0);
+#endif
         if (cinfo_manager_->isCalibrated()) {
+#ifdef WITH_CUDA
+          cv::cuda::remap(
+            gpu_flipped_frame_,
+            gpu_rectified_frame_,
+            gpu_map1_,
+            gpu_map2_,
+            cv::InterpolationFlags::INTER_LINEAR,
+            cv::BorderTypes::BORDER_CONSTANT);
+          gpu_rectified_frame_.download(rectified_frame_);
+#else
           cv::remap(
             flipped_frame_,
             rectified_frame_,
@@ -149,6 +190,7 @@ void CameraDriverNode::camera_sampling_routine()
             map2_,
             cv::InterpolationFlags::INTER_LINEAR,
             cv::BorderTypes::BORDER_CONSTANT);
+#endif
           rect_image_msg = frame_to_msg(rectified_frame_);
           rect_image_msg->header.set__stamp(timestamp);
           rect_image_msg->header.set__frame_id(frame_id_);
@@ -156,6 +198,17 @@ void CameraDriverNode::camera_sampling_routine()
         image_msg = frame_to_msg(flipped_frame_);
       } else {
         if (cinfo_manager_->isCalibrated()) {
+#ifdef WITH_CUDA
+          gpu_frame_.upload(frame_);
+          cv::cuda::remap(
+            gpu_frame_,
+            gpu_rectified_frame_,
+            gpu_map1_,
+            gpu_map2_,
+            cv::InterpolationFlags::INTER_LINEAR,
+            cv::BorderTypes::BORDER_CONSTANT);
+          gpu_rectified_frame_.download(rectified_frame_);
+#else
           cv::remap(
             frame_,
             rectified_frame_,
@@ -163,6 +216,7 @@ void CameraDriverNode::camera_sampling_routine()
             map2_,
             cv::InterpolationFlags::INTER_LINEAR,
             cv::BorderTypes::BORDER_CONSTANT);
+#endif
           rect_image_msg = frame_to_msg(rectified_frame_);
           rect_image_msg->header.set__stamp(timestamp);
           rect_image_msg->header.set__frame_id(frame_id_);

@@ -11,6 +11,7 @@ Simple ROS 2 driver node for USB monocular cameras compatible with the `Video4Li
 - Supports namespace and node name remappings, in order to run different cameras with multiple instances of the node.
 - ROS 2 component compilation and installation.
 - Optimized memory handling.
+- Supports Nvidia CUDA hardware and the OpenCV GPU module.
 - High-resolution, thread-based camera sampling.
 - Offers both reliable and best-effort transmissions, configurable via node parameters.
 - `calibrator` node as standalone ROS 2 executable, to perform nonstandard calibration routines.
@@ -18,6 +19,8 @@ Simple ROS 2 driver node for USB monocular cameras compatible with the `Video4Li
 ## Usage
 
 The code compiles to both a standalone application executable and a ROS 2 component, and both can be run easily. There is also a launch file for the standalone application.
+
+The CMake configuration automatically detects if a compatible CUDA Toolkit installation is available, and if OpenCV has been built with CUDA support. In such case, parts of the code that perform processing such as rectification are replaced with `cv::cuda` API calls. For this to work, OpenCV must have been built from source with CUDA support, which requires a working installation of the CUDA Toolkit and a compatible Nvidia GPU.
 
 Once the node is started, the video capture device will be disabled by default. To toggle it, send a request on the `~/enable_camera` service specifying either `True` or `False` in the `data` field.
 

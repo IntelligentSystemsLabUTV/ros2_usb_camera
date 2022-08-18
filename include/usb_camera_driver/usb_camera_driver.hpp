@@ -54,6 +54,12 @@
 #include <opencv2/imgproc.hpp>
 #include <opencv2/videoio.hpp>
 
+#ifdef WITH_CUDA
+#include <opencv2/core/cuda.hpp>
+#include <opencv2/cudaarithm.hpp>
+#include <opencv2/cudawarping.hpp>
+#endif
+
 #include <rmw/types.h>
 
 using namespace rcl_interfaces::msg;
@@ -110,6 +116,13 @@ private:
   cv::Mat rectified_frame_;
   cv::Mat A_, D_;
   cv::Mat map1_, map2_;
+
+#ifdef WITH_CUDA
+  cv::cuda::GpuMat gpu_frame_;
+  cv::cuda::GpuMat gpu_flipped_frame_;
+  cv::cuda::GpuMat gpu_rectified_frame_;
+  cv::cuda::GpuMat gpu_map1_, gpu_map2_;
+#endif
 
   /* Node parameters */
   std::string frame_id_;

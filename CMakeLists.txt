@@ -21,6 +21,7 @@ endif()
 find_package(ament_cmake REQUIRED)
 find_package(camera_calibration_parsers REQUIRED)
 find_package(camera_info_manager REQUIRED)
+find_package(CUDA)
 find_package(image_transport REQUIRED)
 find_package(OpenCV 4 REQUIRED)
 find_package(rclcpp REQUIRED)
@@ -34,8 +35,12 @@ find_package(Threads REQUIRED)
 add_library(usb_camera_driver SHARED
   src/usb_camera_driver/ucd_utils.cpp
   src/usb_camera_driver/usb_camera_driver.cpp)
-target_compile_definitions(usb_camera_driver PRIVATE
-  COMPOSITION_BUILDING_DLL)
+target_compile_definitions(usb_camera_driver PRIVATE COMPOSITION_BUILDING_DLL)
+if (CUDA_FOUND AND OpenCV_CUDA_VERSION)
+  message(STATUS "OpenCV was built with CUDA version: ${OpenCV_CUDA_VERSION}")
+  message(STATUS "Compiling code with OpenCV GPU API")
+  target_compile_definitions(usb_camera_driver INTERFACE WITH_CUDA)
+endif()
 target_include_directories(usb_camera_driver PUBLIC
   $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
   $<INSTALL_INTERFACE:include>)
