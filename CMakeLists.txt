@@ -39,7 +39,7 @@ target_compile_definitions(usb_camera_driver PRIVATE COMPOSITION_BUILDING_DLL)
 if (CUDA_FOUND AND OpenCV_CUDA_VERSION)
   message(STATUS "OpenCV was built with CUDA version: ${OpenCV_CUDA_VERSION}")
   message(STATUS "Compiling code with OpenCV GPU API")
-  target_compile_definitions(usb_camera_driver INTERFACE WITH_CUDA)
+  target_compile_definitions(usb_camera_driver PUBLIC WITH_CUDA)
 endif()
 target_include_directories(usb_camera_driver PUBLIC
   $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
