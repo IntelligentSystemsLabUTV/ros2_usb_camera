@@ -46,7 +46,6 @@
 using namespace rcl_interfaces::msg;
 
 #define UNUSED(arg) (void)(arg)
-#define LINE() (std::cout << __LINE__ << std::endl)
 
 namespace Calibrator
 {

@@ -88,7 +88,7 @@ CalibratorNode::CalibratorNode(const rclcpp::NodeOptions & node_options)
       this,
       std::placeholders::_1,
       std::placeholders::_2),
-    "raw",
+    "compressed",
     usb_camera_qos_profile);
 
   RCLCPP_INFO(this->get_logger(), "Node initialized");
