@@ -12,3 +12,14 @@
     image_height: 480
     image_width: 640
     is_flipped: false
+    # image_transport parameters
+    usb_camera_driver:
+      camera:
+        image_color:
+          format: jpeg
+          jpeg_quality: 95
+          png_level: 3
+        image_rect_color:
+          format: jpeg
+          jpeg_quality: 95
+          png_level: 3
