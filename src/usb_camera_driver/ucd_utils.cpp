@@ -190,6 +190,15 @@ void CameraDriverNode::init_parameters()
     "Can be changed at run time.",
     false,
     is_flipped_descriptor_);
+
+  // WB temperature
+  declare_double_parameter(
+    "wb_temperature",
+    0.0, -DBL_MAX, DBL_MAX, 0.0,
+    "White balance color temperature.",
+    "Can be changed at runtime, 0.0 means auto.",
+    false,
+    wb_temperature_descriptor_);
 }
 
 /**
@@ -444,6 +453,16 @@ SetParametersResult CameraDriverNode::on_set_parameters_callback(
       }
       continue;
     }
+
+    // WB temperature
+    if (p.get_name() == "wb_temperature") {
+      if (p.get_type() != ParameterType::PARAMETER_DOUBLE) {
+        res.set__successful(false);
+        res.set__reason("Invalid parameter type for wb_temperature");
+        break;
+      }
+      continue;
+    }
   }
   if (!res.successful) {
     return res;
@@ -595,6 +614,42 @@ SetParametersResult CameraDriverNode::on_set_parameters_callback(
         this->get_logger(),
         "is_flipped: %s",
         is_flipped_ ? "true" : "false");
+      continue;
+    }
+
+    // WB temperature
+    if (p.get_name() == "wb_temperature") {
+      if (video_cap_.isOpened()) {
+        bool success;
+        if (p.as_double() == 0.0) {
+          success = video_cap_.set(cv::CAP_PROP_AUTO_WB, 1.0);
+          if (!success) {
+            res.set__successful(false);
+            res.set__reason("cv::VideoCapture::set(CAP_PROP_AUTO_WB, 1.0) failed");
+            RCLCPP_ERROR(this->get_logger(), "Failed to enable auto WB");
+            break;
+          }
+        } else {
+          success = video_cap_.set(cv::CAP_PROP_AUTO_WB, 0.0);
+          if (!success) {
+            res.set__successful(false);
+            res.set__reason("cv::VideoCapture::set(CAP_PROP_AUTO_WB, 0.0) failed");
+            RCLCPP_ERROR(this->get_logger(), "Failed to disable auto WB");
+            break;
+          }
+          success = video_cap_.set(cv::CAP_PROP_WB_TEMPERATURE, p.as_double());
+          if (!success) {
+            res.set__successful(false);
+            res.set__reason("cv::VideoCapture::set(CAP_PROP_WB_TEMPERATURE) failed");
+            RCLCPP_ERROR(this->get_logger(), "Failed to set WB temperature");
+            break;
+          }
+        }
+      }
+      RCLCPP_INFO(
+        this->get_logger(),
+        "wb_temperature: %f",
+        p.as_double());
       continue;
     }
   }

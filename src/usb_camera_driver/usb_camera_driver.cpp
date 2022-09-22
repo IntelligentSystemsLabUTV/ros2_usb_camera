@@ -283,6 +283,7 @@ void CameraDriverNode::hw_enable_callback(
       // Set camera parameters
       double exposure = this->get_parameter("exposure").as_double();
       double brightness = this->get_parameter("brightness").as_double();
+      double wb_temperature = this->get_parameter("wb_temperature").as_double();
       bool success;
       if (exposure != 0.0) {
         success = video_cap_.set(cv::CAP_PROP_AUTO_EXPOSURE, 0.75);
@@ -309,6 +310,33 @@ void CameraDriverNode::hw_enable_callback(
           resp->set__success(false);
           resp->set__message("cv::VideoCapture::set(CAP_PROP_BRIGHTNESS) failed");
           RCLCPP_ERROR(this->get_logger(), "Failed to set camera brightness");
+          return;
+        }
+      }
+      if (wb_temperature == 0.0) {
+        success = video_cap_.set(cv::CAP_PROP_AUTO_WB, 1.0);
+        if (!success) {
+          stopped_.store(true, std::memory_order_release);
+          resp->set__success(false);
+          resp->set__message("cv::VideoCapture::set(CAP_PROP_AUTO_WB, 1.0) failed");
+          RCLCPP_ERROR(this->get_logger(), "Failed to enable auto WB");
+          return;
+        }
+      } else {
+        success = video_cap_.set(cv::CAP_PROP_AUTO_WB, 0.0);
+        if (!success) {
+          stopped_.store(true, std::memory_order_release);
+          resp->set__success(false);
+          resp->set__message("cv::VideoCapture::set(CAP_PROP_AUTO_WB, 0.0) failed");
+          RCLCPP_ERROR(this->get_logger(), "Failed to disable auto WB");
+          return;
+        }
+        success = video_cap_.set(cv::CAP_PROP_WB_TEMPERATURE, wb_temperature);
+        if (!success) {
+          stopped_.store(true, std::memory_order_release);
+          resp->set__success(false);
+          resp->set__message("cv::VideoCapture::set(CAP_PROP_WB_TEMPERATURE) failed");
+          RCLCPP_ERROR(this->get_logger(), "Failed to set WB temperature");
           return;
         }
       }

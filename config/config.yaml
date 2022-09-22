@@ -12,6 +12,7 @@
     image_height: 480
     image_width: 640
     is_flipped: false
+    wb_temperature: 0.0
     # image_transport parameters
     usb_camera_driver:
       camera:

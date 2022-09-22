@@ -44,6 +44,7 @@ Configuration files for node parameters can be found in `config`, with some stan
 - `image_height`: image height, defaults to `480`.
 - `image_width`: image width, defaults to `640`.
 - `is_flipped`: toggles vertical image flipping.
+- `wb_temperature`: white balance temperature (hardware-dependent).
 
 Keep in mind that hardware-dependent parameters are particularly tricky: they might not be supported, have unusual or even completely different ranges, and require some black magic to be correctly set up. What you see in this code was done to work with some cameras we had at the time, so be prepared to change many things if you want to act on camera hardware settings.
 

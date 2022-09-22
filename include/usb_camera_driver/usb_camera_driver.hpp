@@ -149,6 +149,7 @@ private:
   ParameterDescriptor image_height_descriptor_;
   ParameterDescriptor image_width_descriptor_;
   ParameterDescriptor is_flipped_descriptor_;
+  ParameterDescriptor wb_temperature_descriptor_;
 
   /* image_transport objects */
   image_transport::CameraPublisher camera_pub_;
