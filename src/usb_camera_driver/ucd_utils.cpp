@@ -520,7 +520,7 @@ SetParametersResult CameraDriverNode::on_set_parameters_callback(
           success = video_cap_.set(cv::CAP_PROP_AUTO_EXPOSURE, 3.0);
           if (!success) {
             res.set__successful(false);
-            res.set__reason("cv::VideoCapture::set(CAP_PROP_AUTO_EXPOSURE, 0.25) failed");
+            res.set__reason("cv::VideoCapture::set(CAP_PROP_AUTO_EXPOSURE, 3.0) failed");
             RCLCPP_ERROR(this->get_logger(), "Failed to set camera exposure");
             break;
           }
