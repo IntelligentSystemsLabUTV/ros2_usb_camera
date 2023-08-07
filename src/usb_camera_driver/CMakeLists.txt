@@ -1,5 +1,5 @@
-cmake_minimum_required(VERSION 3.15)
-project(ros2_usb_camera)
+cmake_minimum_required(VERSION 3.8)
+project(usb_camera_driver)
 
 set(CMAKE_BUILD_TYPE "RelWithDebInfo")
 
@@ -8,22 +8,28 @@ if(NOT CMAKE_C_STANDARD)
   set(CMAKE_C_STANDARD 99)
 endif()
 
-# Default to C++14
+# Default to C++17
 if(NOT CMAKE_CXX_STANDARD)
-  set(CMAKE_CXX_STANDARD 14)
+  set(CMAKE_CXX_STANDARD 17)
 endif()
 
 if(CMAKE_COMPILER_IS_GNUCXX OR CMAKE_CXX_COMPILER_ID MATCHES "Clang")
   add_compile_options(-Wall -Wextra -Wpedantic)
 endif()
 
-# find dependencies
+set(THREADS_PREFER_PTHREAD_FLAG ON)
+
+# Find dependencies
 find_package(ament_cmake REQUIRED)
 find_package(camera_calibration_parsers REQUIRED)
 find_package(camera_info_manager REQUIRED)
 find_package(CUDA)
+find_package(dua_app_management REQUIRED)
+find_package(dua_node REQUIRED)
+find_package(dua_qos REQUIRED)
 find_package(image_transport REQUIRED)
 find_package(OpenCV 4 REQUIRED)
+find_package(params_manager REQUIRED)
 find_package(rclcpp REQUIRED)
 find_package(rclcpp_components REQUIRED)
 find_package(sensor_msgs REQUIRED)
@@ -31,61 +37,73 @@ find_package(std_msgs REQUIRED)
 find_package(std_srvs REQUIRED)
 find_package(Threads REQUIRED)
 
+# Generate parameters source code
+generate_init_parameters(
+  YAML_FILE "${CMAKE_CURRENT_SOURCE_DIR}/src/usb_camera_driver/params.yaml"
+  OUT_FILE "init_parameters.cpp")
+
+# Configure USB Camera Driver node source files
+file(GLOB USB_CAMERA_DRIVER_NODE_SRCS
+  RELATIVE "${CMAKE_CURRENT_SOURCE_DIR}"
+  "src/usb_camera_driver/*.cpp")
+list(APPEND USB_CAMERA_DRIVER_NODE_SRCS init_parameters.cpp)
+
 # USB Camera Driver node
-add_library(usb_camera_driver SHARED
-  src/usb_camera_driver/ucd_utils.cpp
-  src/usb_camera_driver/usb_camera_driver.cpp)
+add_library(usb_camera_driver SHARED ${USB_CAMERA_DRIVER_NODE_SRCS})
 target_compile_definitions(usb_camera_driver PRIVATE COMPOSITION_BUILDING_DLL)
 if (CUDA_FOUND AND OpenCV_CUDA_VERSION)
   message(STATUS "OpenCV was built with CUDA version: ${OpenCV_CUDA_VERSION}")
-  message(STATUS "Compiling code with OpenCV GPU API")
+  message(STATUS "Compiling code with cv::cuda API")
   target_compile_definitions(usb_camera_driver PUBLIC WITH_CUDA)
 endif()
 target_include_directories(usb_camera_driver PUBLIC
   $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
   $<INSTALL_INTERFACE:include>)
-target_link_libraries(usb_camera_driver Threads::Threads)
-ament_target_dependencies(
-  usb_camera_driver
-  "camera_calibration_parsers"
-  "camera_info_manager"
-  "image_transport"
-  "OpenCV"
-  "rclcpp"
-  "rclcpp_components"
-  "sensor_msgs"
-  "std_msgs"
-  "std_srvs"
-)
+target_compile_features(usb_camera_driver PUBLIC c_std_99 cxx_std_17)  # Require C99 and C++17
+target_link_libraries(usb_camera_driver
+  Threads::Threads)
+ament_target_dependencies(usb_camera_driver
+  camera_calibration_parsers
+  camera_info_manager
+  dua_node
+  dua_qos
+  image_transport
+  OpenCV
+  params_manager
+  rclcpp
+  rclcpp_components
+  sensor_msgs
+  std_msgs
+  std_srvs)
 rclcpp_components_register_nodes(usb_camera_driver "USBCameraDriver::CameraDriverNode")
-set(node_plugins "${node_plugins}USBCameraDriver::CameraDriverNode;$<TARGET_FILE:usb_camera_driver>\n")
 
-# USB Camera standalone application
+# USB Camera Driver standalone application
 add_executable(usb_camera_app
   src/ucd_app.cpp)
 target_include_directories(usb_camera_app PUBLIC
   $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
   $<INSTALL_INTERFACE:include>)
+target_compile_features(usb_camera_app PUBLIC c_std_99 cxx_std_17)  # Require C99 and C++17
 target_link_libraries(usb_camera_app usb_camera_driver)
-ament_target_dependencies(
-  usb_camera_app
-  "rclcpp")
+ament_target_dependencies(usb_camera_app
+  dua_app_management
+  rclcpp)
 
-# usb_camera_driver component
+# Install USB Camera Driver component
 install(TARGETS usb_camera_driver
   ARCHIVE DESTINATION lib
   LIBRARY DESTINATION lib
   RUNTIME DESTINATION bin)
 
-# usb_camera app
+# Install USB Camera Driver app
 install(TARGETS usb_camera_app
   DESTINATION lib/${PROJECT_NAME})
 
-# Launch files
+# Install Launch files
 install(DIRECTORY launch
   DESTINATION share/${PROJECT_NAME})
 
-# Config files
+# Install Config files
 install(DIRECTORY config
   DESTINATION share/${PROJECT_NAME})
 
@@ -99,5 +117,8 @@ if(BUILD_TESTING)
   #set(ament_cmake_cpplint_FOUND TRUE)
   ament_lint_auto_find_test_dependencies()
 endif()
+
+# Make sure that the library path is exported even if the library itself is not
+ament_environment_hooks("${ament_cmake_package_templates_ENVIRONMENT_HOOK_LIBRARY_PATH}")
 
 ament_package()

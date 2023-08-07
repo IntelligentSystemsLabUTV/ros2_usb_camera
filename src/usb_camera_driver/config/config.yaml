@@ -1,9 +1,9 @@
-/usb_camera_driver:
+/usb_camera/usb_camera_driver:
   ros__parameters:
     base_topic_name: camera
     best_effort_qos: true
     brightness: 0.0
-    camera_calibration_file: file://config/camera.yaml
+    camera_calibration_file: "file:///home/neo/workspace/src/usb_camera_driver/config/camera.yaml"
     camera_id: 0
     camera_name: camera
     exposure: 0.0
@@ -12,6 +12,7 @@
     image_height: 480
     image_width: 640
     is_flipped: false
+    publisher_depth: 5
     wb_temperature: 0.0
     # image_transport parameters
     usb_camera_driver:

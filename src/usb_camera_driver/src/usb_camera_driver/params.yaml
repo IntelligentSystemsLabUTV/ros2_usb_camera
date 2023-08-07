@@ -1,0 +1,134 @@
+header_include_path: usb_camera_driver/usb_camera_driver.hpp
+namespace: USBCameraDriver
+node_class_name: CameraDriverNode
+
+params:
+  base_topic_name:
+    type: string
+    default_value: camera
+    description: "Base topic name for the camera node."
+    constraints: "Must be a valid ROS topic name."
+    read_only: true
+
+  best_effort_qos:
+    type: bool
+    default_value: false
+    description: "Use best effort QoS for image topics."
+    constraints: ""
+    read_only: true
+
+  brightness:
+    type: double
+    default_value: 0.0
+    min_value: -1000.0
+    max_value: 1000.0
+    step: 0.0
+    description: "Brightness setting for the camera."
+    constraints: "Camera-dependent, 0.0 means 'auto'."
+    read_only: false
+    validator: validate_brightness
+
+  camera_calibration_file:
+    type: string
+    default_value: ""
+    description: "Camera calibration file URL."
+    constraints: "Must be a valid file URL."
+    read_only: true
+
+  camera_id:
+    type: integer
+    default_value: 0
+    min_value: 0
+    max_value: 9223372036854775807
+    step: 1
+    description: "Camera device ID."
+    constraints: "Must be a valid camera ID."
+    read_only: true
+
+  camera_name:
+    type: string
+    default_value: "camera"
+    description: "Camera name from the configuration file."
+    constraints: ""
+    read_only: true
+
+  exposure:
+    type: double
+    default_value: 0.0
+    min_value: -1000.0
+    max_value: 1000.0
+    step: 0.0
+    description: "Exposure setting for the camera."
+    constraints: "Camera-dependent, 0.0 means 'auto'."
+    read_only: false
+    validator: validate_exposure
+
+  fps:
+    type: integer
+    default_value: 20
+    min_value: 1
+    max_value: 9223372036854775807
+    step: 1
+    description: "Camera frame rate."
+    constraints: "Changes require camera restart."
+    read_only: false
+    var_name: fps_
+
+  frame_id:
+    type: string
+    default_value: "map"
+    description: "Camera frame ID."
+    constraints: "Make sure that a TF frame with this name exists."
+    read_only: false
+    var_name: frame_id_
+
+  image_height:
+    type: integer
+    default_value: 480
+    min_value: 1
+    max_value: 9223372036854775807
+    step: 1
+    description: "Image height."
+    constraints: "Changes require camera restart."
+    read_only: false
+    var_name: image_height_
+
+  image_width:
+    type: integer
+    default_value: 640
+    min_value: 1
+    max_value: 9223372036854775807
+    step: 1
+    description: "Image width."
+    constraints: "Changes require camera restart."
+    read_only: false
+    var_name: image_width_
+
+  is_flipped:
+    type: bool
+    default_value: false
+    description: "Flip the image horizontally."
+    constraints: ""
+    read_only: false
+    var_name: is_flipped_
+
+  publisher_depth:
+    type: integer
+    default_value: 5
+    min_value: 1
+    max_value: 100
+    step: 1
+    description: "Depth of the image publisher queue."
+    constraints: ""
+    read_only: true
+
+  wb_temperature:
+    type: double
+    default_value: 0.0
+    min_value: -1000.0
+    max_value: 1000.0
+    step: 0.0
+    description: "White balance color temperature setting for the camera."
+    constraints: "Camera-dependent, 0.0 means 'auto'."
+    read_only: false
+    validator: validate_wb_temperature

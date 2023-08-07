@@ -1,18 +1,21 @@
 <?xml version="1.0"?>
 <?xml-model href="http://download.ros.org/schema/package_format3.xsd" schematypens="http://www.w3.org/2001/XMLSchema"?>
 <package format="3">
-  <name>ros2_usb_camera</name>
+  <name>usb_camera_driver</name>
   <version>1.0.0</version>
-  <description>Package containing a simple web camera setup</description>
+  <description>ROS 2 driver node for monocular USB cameras.</description>
   <maintainer email="isl.torvergata@gmail.com">Intelligent Systems Lab</maintainer>
-  <license>GNU GPL v3.0</license>
+  <license>GPL-3.0-only</license>
 
   <buildtool_depend>ament_cmake</buildtool_depend>
 
   <depend>camera_calibration_parsers</depend>
   <depend>camera_info_manager</depend>
+  <depend>dua_app_management</depend>
+  <depend>dua_node</depend>
+  <depend>dua_qos</depend>
   <depend>image_transport</depend>
-  <depend>libopencv-dev</depend>
+  <depend>params_manager</depend>
   <depend>rclcpp</depend>
   <depend>rclcpp_components</depend>
   <depend>sensor_msgs</depend>

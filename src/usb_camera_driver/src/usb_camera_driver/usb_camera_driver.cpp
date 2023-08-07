@@ -5,11 +5,11 @@
  * Lorenzo Bianchi <lnz.bnc@gmail.com>
  * Intelligent Systems Lab <isl.torvergata@gmail.com>
  *
- * June 4, 2022
+ * August 7, 2023
  */
 
 /**
- * Copyright © 2022 Intelligent Systems Lab
+ * Copyright © 2023 Intelligent Systems Lab
  */
 
 /**
@@ -42,7 +42,7 @@ namespace USBCameraDriver
  * @throws RuntimeError
  */
 CameraDriverNode::CameraDriverNode(const rclcpp::NodeOptions & opts)
-: Node("usb_camera_driver", opts)
+: NodeBase("usb_camera_driver", opts, true)
 {
   // Initialize node parameters
   init_parameters();
@@ -67,16 +67,19 @@ CameraDriverNode::CameraDriverNode(const rclcpp::NodeOptions & opts)
   }
 
   // Create image_transport publishers (this will use all available transports, see docs)
+  uint depth = uint(this->get_parameter("publisher_depth").as_int());
   camera_pub_ = image_transport::create_camera_publisher(
     this,
     "~/" + this->get_parameter("base_topic_name").as_string() + "/image_color",
     this->get_parameter("best_effort_qos").as_bool() ?
-    usb_camera_qos_profile : usb_camera_reliable_qos_profile);
+    DUAQoS::Visualization::get_image_qos(depth).get_rmw_qos_profile() :
+    DUAQoS::get_image_qos(depth).get_rmw_qos_profile());
   rect_pub_ = image_transport::create_publisher(
     this,
     "~/" + this->get_parameter("base_topic_name").as_string() + "/image_rect_color",
     this->get_parameter("best_effort_qos").as_bool() ?
-    usb_camera_qos_profile : usb_camera_reliable_qos_profile);
+    DUAQoS::Visualization::get_image_qos(depth).get_rmw_qos_profile() :
+    DUAQoS::get_image_qos(depth).get_rmw_qos_profile());
 
   // Get and store current camera info and compute undistorsion and rectification maps
   if (cinfo_manager_->isCalibrated()) {

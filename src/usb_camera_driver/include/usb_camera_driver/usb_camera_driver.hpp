@@ -5,11 +5,11 @@
  * Lorenzo Bianchi <lnz.bnc@gmail.com>
  * Intelligent Systems Lab <isl.torvergata@gmail.com>
  *
- * June 4, 2022
+ * August 7, 2023
  */
 
 /**
- * Copyright © 2022 Intelligent Systems Lab
+ * Copyright © 2023 Intelligent Systems Lab
  */
 
 /**
@@ -39,6 +39,9 @@
 
 #include <rclcpp/rclcpp.hpp>
 
+#include <dua_node/dua_node.hpp>
+#include <dua_qos/dua_qos.hpp>
+
 #include <sensor_msgs/msg/camera_info.hpp>
 #include <sensor_msgs/msg/image.hpp>
 #include <sensor_msgs/image_encodings.hpp>
@@ -60,9 +63,6 @@
 #include <opencv2/cudawarping.hpp>
 #endif
 
-#include <rmw/types.h>
-
-using namespace rcl_interfaces::msg;
 using namespace sensor_msgs::msg;
 using namespace std_srvs::srv;
 
@@ -70,46 +70,19 @@ namespace USBCameraDriver
 {
 
 /**
- * QoS profile for best-effort image transmission.
- */
-static const rmw_qos_profile_t usb_camera_qos_profile = {
-  RMW_QOS_POLICY_HISTORY_KEEP_LAST,
-  1,
-  RMW_QOS_POLICY_RELIABILITY_BEST_EFFORT,
-  RMW_QOS_POLICY_DURABILITY_VOLATILE,
-  RMW_QOS_DEADLINE_DEFAULT,
-  RMW_QOS_LIFESPAN_DEFAULT,
-  RMW_QOS_POLICY_LIVELINESS_SYSTEM_DEFAULT,
-  RMW_QOS_LIVELINESS_LEASE_DURATION_DEFAULT,
-  false
-};
-
-/**
- * QoS profile for image transmission.
- */
-static const rmw_qos_profile_t usb_camera_reliable_qos_profile = {
-  RMW_QOS_POLICY_HISTORY_KEEP_LAST,
-  1,
-  RMW_QOS_POLICY_RELIABILITY_RELIABLE,
-  RMW_QOS_POLICY_DURABILITY_VOLATILE,
-  RMW_QOS_DEADLINE_DEFAULT,
-  RMW_QOS_LIFESPAN_DEFAULT,
-  RMW_QOS_POLICY_LIVELINESS_SYSTEM_DEFAULT,
-  RMW_QOS_LIVELINESS_LEASE_DURATION_DEFAULT,
-  false
-};
-
-/**
  * Drives USB, V4L-compatible cameras with OpenCV.
  */
-class CameraDriverNode : public rclcpp::Node
+class CameraDriverNode : public DUANode::NodeBase
 {
 public:
   explicit CameraDriverNode(const rclcpp::NodeOptions & opts = rclcpp::NodeOptions());
-  ~CameraDriverNode();
+  virtual ~CameraDriverNode();
 
 private:
-  /* Video capture device and buffers */
+  /* Node initialization routines. */
+  void init_parameters();
+
+  /* Video capture device and buffers. */
   cv::VideoCapture video_cap_;
   cv::Mat frame_;
   cv::Mat flipped_frame_;
@@ -124,73 +97,38 @@ private:
   cv::cuda::GpuMat gpu_map1_, gpu_map2_;
 #endif
 
-  /* Node parameters */
+  /* Node parameters. */
   std::string frame_id_;
   int64_t fps_ = 0;
   int64_t image_height_ = 0;
   int64_t image_width_ = 0;
   bool is_flipped_ = false;
 
-  /* Service servers */
+  /* Node parameters validation routine. */
+  bool validate_brightness(const rclcpp::Parameter & p);
+  bool validate_exposure(const rclcpp::Parameter & p);
+  bool validate_wb_temperature(const rclcpp::Parameter & p);
+
+  /* Service servers. */
   rclcpp::Service<SetBool>::SharedPtr hw_enable_server_;
 
-  /* Service callbacks */
+  /* Service callbacks. */
   void hw_enable_callback(SetBool::Request::SharedPtr req, SetBool::Response::SharedPtr resp);
 
-  /* Node parameters descriptors */
-  ParameterDescriptor base_topic_name_descriptor_;
-  ParameterDescriptor be_qos_descriptor_;
-  ParameterDescriptor camera_calibration_file_descriptor_;
-  ParameterDescriptor camera_id_descriptor_;
-  ParameterDescriptor camera_name_descriptor_;
-  ParameterDescriptor exposure_descriptor_;
-  ParameterDescriptor frame_id_descriptor_;
-  ParameterDescriptor fps_descriptor_;
-  ParameterDescriptor image_height_descriptor_;
-  ParameterDescriptor image_width_descriptor_;
-  ParameterDescriptor is_flipped_descriptor_;
-  ParameterDescriptor wb_temperature_descriptor_;
-
-  /* image_transport objects */
+  /* image_transport publishers and buffers. */
   image_transport::CameraPublisher camera_pub_;
   image_transport::Publisher rect_pub_;
   camera_info_manager::CameraInfo camera_info_;
   std::shared_ptr<camera_info_manager::CameraInfoManager> cinfo_manager_;
 
-  /* Utility routines */
+  /* Utility routines. */
   Image::SharedPtr frame_to_msg(cv::Mat & frame);
-  void declare_bool_parameter(
-    std::string && name,
-    bool default_val,
-    std::string && desc, std::string && constraints,
-    bool read_only, ParameterDescriptor & descriptor);
-  void declare_double_parameter(
-    std::string && name,
-    double default_val, double from, double to, double step,
-    std::string && desc, std::string && constraints,
-    bool read_only, ParameterDescriptor & descriptor);
-  void declare_int_parameter(
-    std::string && name,
-    int64_t default_val, int64_t from, int64_t to, int64_t step,
-    std::string && desc, std::string && constraints,
-    bool read_only, ParameterDescriptor & descriptor);
-  void declare_string_parameter(
-    std::string && name,
-    std::string && default_val,
-    std::string && desc, std::string && constraints,
-    bool read_only, ParameterDescriptor & descriptor);
-  void init_parameters();
 
-  /* Parameters callback */
-  OnSetParametersCallbackHandle::SharedPtr on_set_params_chandle_;
-  SetParametersResult on_set_parameters_callback(
-    const std::vector<rclcpp::Parameter> & params);
-
-  /* Thread objects and routines */
+  /* Camera sampling thread. */
   std::thread camera_sampling_thread_;
   void camera_sampling_routine();
 
-  /* Synchronization primitives */
+  /* Synchronization primitives. */
   std::atomic<bool> stopped_;
 };
 

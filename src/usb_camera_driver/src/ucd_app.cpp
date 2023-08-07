@@ -1,15 +1,15 @@
 /**
- * ROS 2 USB Camera standalone application.
+ * ROS 2 USB Camera Driver standalone application.
  *
  * Roberto Masocco <robmasocco@gmail.com>
  * Lorenzo Bianchi <lnz.bnc@gmail.com>
  * Intelligent Systems Lab <isl.torvergata@gmail.com>
  *
- * June 4, 2022
+ * August 7, 2023
  */
 
 /**
- * Copyright © 2022 Intelligent Systems Lab
+ * Copyright © 2023 Intelligent Systems Lab
  */
 
 /**
@@ -28,47 +28,42 @@
  * 51 Franklin St, Fifth Floor, Boston, MA 02110-1301 USA.
  */
 
-#define MODULE_NAME "usb_camera_app"
-
-#include <cstdio>
 #include <cstdlib>
-#include <iostream>
-
-#include <sys/types.h>
-#include <unistd.h>
+#include <csignal>
 
 #include <rclcpp/rclcpp.hpp>
 
+#include <ros2_app_manager/ros2_app_manager.hpp>
+#include <ros2_signal_handler/ros2_signal_handler.hpp>
+
 #include <usb_camera_driver/usb_camera_driver.hpp>
 
-using namespace USBCameraDriver;
+using namespace DUAAppManagement;
 
 int main(int argc, char ** argv)
 {
-  // Disable I/O buffering
-  if (setvbuf(stdout, NULL, _IONBF, 0)) {
-    RCLCPP_FATAL(
-      rclcpp::get_logger(MODULE_NAME),
-      "Failed to set I/O buffering");
-    exit(EXIT_FAILURE);
-  }
+  ROS2AppManager<rclcpp::executors::SingleThreadedExecutor,
+    USBCameraDriver::CameraDriverNode> app_manager(
+    argc,
+    argv,
+    "usb_camera_driver_app");
 
-  // Initialize ROS 2 context
-  rclcpp::init(argc, argv);
+  SignalHandler & sig_handler = SignalHandler::get_global_signal_handler();
+  sig_handler.init(
+    app_manager.get_context(),
+    "usb_camera_driver_app_signal_handler",
+    app_manager.get_executor());
+  sig_handler.install(SIGINT);
+  sig_handler.install(SIGTERM);
+  sig_handler.install(SIGQUIT);
+  sig_handler.ignore(SIGHUP);
+  sig_handler.ignore(SIGUSR1);
+  sig_handler.ignore(SIGUSR2);
 
-  // Initialize ROS 2 node
-  auto usb_camera_driver_node = std::make_shared<CameraDriverNode>();
+  app_manager.run();
 
-  RCLCPP_WARN(
-    rclcpp::get_logger(MODULE_NAME),
-    "(%d) " MODULE_NAME " online",
-    getpid());
+  app_manager.shutdown();
+  sig_handler.fini();
 
-  // Spin on the node
-  rclcpp::spin(usb_camera_driver_node);
-
-  // Terminate node and application
-  usb_camera_driver_node.reset();
-  rclcpp::shutdown();
   exit(EXIT_SUCCESS);
 }
