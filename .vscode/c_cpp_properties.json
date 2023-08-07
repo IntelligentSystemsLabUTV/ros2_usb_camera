@@ -1,0 +1,28 @@
+{
+  "configurations": [
+    {
+      "name": "Linux",
+      "browse": {
+        "databaseFilename": "${workspaceFolder}/.vscode/browse.vc.db",
+        "limitSymbolsToIncludedHeaders": false
+      },
+      "includePath": [
+        "${default}",
+        "${workspaceFolder}/**",
+        "/opt/ros/humble/include/**",
+        "${workspaceFolder}/install/**",
+        "/opt/ros/dua-utils/install/**",
+        // Add subdirectories of install here to include interfaces,
+        // headers, plugin base headers and everything else you need
+        "/usr/local/**",
+        "/usr/local/include"
+      ],
+      "defines": [],
+      "compilerPath": "/usr/bin/g++",
+      "cStandard": "c99",
+      "cppStandard": "c++17",
+      "intelliSenseMode": "linux-gcc-x64"
+    }
+  ],
+  "version": 4
+}

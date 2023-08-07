@@ -1,5 +1,0 @@
-/calibrator:
-  ros__parameters:
-    aruco_size: 0.5
-    calibration_hgt: 2.0
-    usb_camera_topic_name: /usb_camera_driver/camera/image_rect_color

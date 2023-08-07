@@ -1,0 +1,8 @@
+# ROS 2 workspace folders
+build/*
+install/*
+log/*
+
+# Uncomment the following to avoid pushing personal configurations
+# .vscode/
+
