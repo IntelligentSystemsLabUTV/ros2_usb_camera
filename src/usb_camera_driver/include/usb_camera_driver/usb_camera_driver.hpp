@@ -116,12 +116,14 @@ private:
   void hw_enable_callback(SetBool::Request::SharedPtr req, SetBool::Response::SharedPtr resp);
 
   /* image_transport publishers and buffers. */
-  image_transport::CameraPublisher camera_pub_;
-  image_transport::Publisher rect_pub_;
+  std::shared_ptr<image_transport::CameraPublisher> camera_pub_;
+  std::shared_ptr<image_transport::Publisher> rect_pub_;
   camera_info_manager::CameraInfo camera_info_;
   std::shared_ptr<camera_info_manager::CameraInfoManager> cinfo_manager_;
 
   /* Utility routines. */
+  bool open_camera();
+  void close_camera();
   Image::SharedPtr frame_to_msg(cv::Mat & frame);
 
   /* Camera sampling thread. */

@@ -38,6 +38,93 @@ namespace USBCameraDriver
 {
 
 /**
+ * @brief Opens the camera.
+ *
+ * @return True if the camera was opened successfully, false otherwise.
+ */
+bool CameraDriverNode::open_camera()
+{
+  // Open capture device
+  if (!video_cap_.open(this->get_parameter("camera_id").as_int(), cv::CAP_V4L2) ||
+    !video_cap_.set(cv::CAP_PROP_FRAME_WIDTH, image_width_) ||
+    !video_cap_.set(cv::CAP_PROP_FRAME_HEIGHT, image_height_) ||
+    !video_cap_.set(cv::CAP_PROP_FPS, fps_))
+  {
+    RCLCPP_ERROR(
+      this->get_logger(),
+      "CameraDriverNode::open_camera: Failed to open capture device");
+    return false;
+  }
+
+  // Set camera parameters
+  double exposure = this->get_parameter("exposure").as_double();
+  double brightness = this->get_parameter("brightness").as_double();
+  double wb_temperature = this->get_parameter("wb_temperature").as_double();
+  bool success;
+  if (exposure != 0.0) {
+    success = video_cap_.set(cv::CAP_PROP_AUTO_EXPOSURE, 0.75);
+    if (!success) {
+      RCLCPP_ERROR(
+        this->get_logger(),
+        "CameraDriverNode::open_camera: cv::VideoCapture::set(CAP_PROP_AUTO_EXPOSURE, 0.75) failed");
+      return false;
+    }
+    success = video_cap_.set(cv::CAP_PROP_EXPOSURE, exposure);
+    if (!success) {
+      RCLCPP_ERROR(
+        this->get_logger(),
+        "CameraDriverNode::open_camera: cv::VideoCapture::set(CAP_PROP_EXPOSURE) failed");
+      return false;
+    }
+  }
+  if (brightness != 0.0) {
+    success = video_cap_.set(cv::CAP_PROP_BRIGHTNESS, brightness);
+    if (!success) {
+      RCLCPP_ERROR(
+        this->get_logger(),
+        "CameraDriverNode::open_camera: cv::VideoCapture::set(CAP_PROP_BRIGHTNESS) failed");
+      return false;
+    }
+  }
+  if (wb_temperature == 0.0) {
+    success = video_cap_.set(cv::CAP_PROP_AUTO_WB, 1.0);
+    if (!success) {
+      RCLCPP_ERROR(
+        this->get_logger(),
+        "CameraDriverNode::open_camera: cv::VideoCapture::set(CAP_PROP_AUTO_WB, 1.0) failed");
+      return false;
+    }
+  } else {
+    success = video_cap_.set(cv::CAP_PROP_AUTO_WB, 0.0);
+    if (!success) {
+      RCLCPP_ERROR(
+        this->get_logger(),
+        "CameraDriverNode::open_camera: cv::VideoCapture::set(CAP_PROP_AUTO_WB, 0.0) failed");
+      return false;
+    }
+    success = video_cap_.set(cv::CAP_PROP_WB_TEMPERATURE, wb_temperature);
+    if (!success) {
+      RCLCPP_ERROR(
+        this->get_logger(),
+        "CameraDriverNode::open_camera: cv::VideoCapture::set(CAP_PROP_WB_TEMPERATURE) failed");
+      return false;
+    }
+  }
+
+  return true;
+}
+
+/**
+ * @brief Closes the camera.
+ */
+void CameraDriverNode::close_camera()
+{
+  if (video_cap_.isOpened()) {
+    video_cap_.release();
+  }
+}
+
+/**
  * @brief Converts a frame into an Image message.
  *
  * @param frame cv::Mat storing the frame.

@@ -68,18 +68,20 @@ CameraDriverNode::CameraDriverNode(const rclcpp::NodeOptions & opts)
 
   // Create image_transport publishers (this will use all available transports, see docs)
   uint depth = uint(this->get_parameter("publisher_depth").as_int());
-  camera_pub_ = image_transport::create_camera_publisher(
-    this,
-    "~/" + this->get_parameter("base_topic_name").as_string() + "/image_color",
-    this->get_parameter("best_effort_qos").as_bool() ?
-    DUAQoS::Visualization::get_image_qos(depth).get_rmw_qos_profile() :
-    DUAQoS::get_image_qos(depth).get_rmw_qos_profile());
-  rect_pub_ = image_transport::create_publisher(
-    this,
-    "~/" + this->get_parameter("base_topic_name").as_string() + "/image_rect_color",
-    this->get_parameter("best_effort_qos").as_bool() ?
-    DUAQoS::Visualization::get_image_qos(depth).get_rmw_qos_profile() :
-    DUAQoS::get_image_qos(depth).get_rmw_qos_profile());
+  camera_pub_ = std::make_shared<image_transport::CameraPublisher>(
+    image_transport::create_camera_publisher(
+      this,
+      "~/" + this->get_parameter("base_topic_name").as_string() + "/image_color",
+      this->get_parameter("best_effort_qos").as_bool() ?
+      DUAQoS::Visualization::get_image_qos(depth).get_rmw_qos_profile() :
+      DUAQoS::get_image_qos(depth).get_rmw_qos_profile()));
+  rect_pub_ = std::make_shared<image_transport::Publisher>(
+    image_transport::create_publisher(
+      this,
+      "~/" + this->get_parameter("base_topic_name").as_string() + "/image_rect_color",
+      this->get_parameter("best_effort_qos").as_bool() ?
+      DUAQoS::Visualization::get_image_qos(depth).get_rmw_qos_profile() :
+      DUAQoS::get_image_qos(depth).get_rmw_qos_profile()));
 
   // Get and store current camera info and compute undistorsion and rectification maps
   if (cinfo_manager_->isCalibrated()) {
@@ -137,9 +139,12 @@ CameraDriverNode::~CameraDriverNode()
       std::memory_order_acquire))
   {
     camera_sampling_thread_.join();
+    close_camera();
   }
-  camera_pub_.shutdown();
-  rect_pub_.shutdown();
+  camera_pub_->shutdown();
+  rect_pub_->shutdown();
+  camera_pub_.reset();
+  rect_pub_.reset();
 }
 
 /**
@@ -235,9 +240,9 @@ void CameraDriverNode::camera_sampling_routine()
       camera_info_msg->header.set__frame_id(frame_id_);
 
       // Publish new frame together with its CameraInfo on all available transports
-      camera_pub_.publish(image_msg, camera_info_msg);
+      camera_pub_->publish(image_msg, camera_info_msg);
       if (cinfo_manager_->isCalibrated()) {
-        rect_pub_.publish(rect_image_msg);
+        rect_pub_->publish(rect_image_msg);
       }
     } else {
       RCLCPP_INFO(this->get_logger(), "Empty frame");
@@ -245,9 +250,6 @@ void CameraDriverNode::camera_sampling_routine()
 
     sampling_timer.sleep();
   }
-
-  // Close video capture device
-  video_cap_.release();
 
   RCLCPP_WARN(this->get_logger(), "Camera sampling thread stopped");
 }
@@ -270,78 +272,12 @@ void CameraDriverNode::hw_enable_callback(
         std::memory_order_release,
         std::memory_order_acquire))
     {
-      // Open capture device
-      if (!video_cap_.open(this->get_parameter("camera_id").as_int(), cv::CAP_V4L2) ||
-        !video_cap_.set(cv::CAP_PROP_FRAME_WIDTH, image_width_) ||
-        !video_cap_.set(cv::CAP_PROP_FRAME_HEIGHT, image_height_) ||
-        !video_cap_.set(cv::CAP_PROP_FPS, fps_))
-      {
+      // Open camera
+      if (!open_camera()) {
         stopped_.store(true, std::memory_order_release);
         resp->set__success(false);
-        resp->set__message("Failed to open capture device");
-        RCLCPP_ERROR(this->get_logger(), "Failed to open capture device");
+        resp->set__message("Failed to open camera");
         return;
-      }
-
-      // Set camera parameters
-      double exposure = this->get_parameter("exposure").as_double();
-      double brightness = this->get_parameter("brightness").as_double();
-      double wb_temperature = this->get_parameter("wb_temperature").as_double();
-      bool success;
-      if (exposure != 0.0) {
-        success = video_cap_.set(cv::CAP_PROP_AUTO_EXPOSURE, 0.75);
-        if (!success) {
-          stopped_.store(true, std::memory_order_release);
-          resp->set__success(false);
-          resp->set__message("cv::VideoCapture::set(CAP_PROP_AUTO_EXPOSURE, 0.75) failed");
-          RCLCPP_ERROR(this->get_logger(), "Failed to set camera exposure");
-          return;
-        }
-        success = video_cap_.set(cv::CAP_PROP_EXPOSURE, exposure);
-        if (!success) {
-          stopped_.store(true, std::memory_order_release);
-          resp->set__success(false);
-          resp->set__message("cv::VideoCapture::set(CAP_PROP_EXPOSURE) failed");
-          RCLCPP_ERROR(this->get_logger(), "Failed to set camera exposure");
-          return;
-        }
-      }
-      if (brightness != 0.0) {
-        success = video_cap_.set(cv::CAP_PROP_BRIGHTNESS, brightness);
-        if (!success) {
-          stopped_.store(true, std::memory_order_release);
-          resp->set__success(false);
-          resp->set__message("cv::VideoCapture::set(CAP_PROP_BRIGHTNESS) failed");
-          RCLCPP_ERROR(this->get_logger(), "Failed to set camera brightness");
-          return;
-        }
-      }
-      if (wb_temperature == 0.0) {
-        success = video_cap_.set(cv::CAP_PROP_AUTO_WB, 1.0);
-        if (!success) {
-          stopped_.store(true, std::memory_order_release);
-          resp->set__success(false);
-          resp->set__message("cv::VideoCapture::set(CAP_PROP_AUTO_WB, 1.0) failed");
-          RCLCPP_ERROR(this->get_logger(), "Failed to enable auto WB");
-          return;
-        }
-      } else {
-        success = video_cap_.set(cv::CAP_PROP_AUTO_WB, 0.0);
-        if (!success) {
-          stopped_.store(true, std::memory_order_release);
-          resp->set__success(false);
-          resp->set__message("cv::VideoCapture::set(CAP_PROP_AUTO_WB, 0.0) failed");
-          RCLCPP_ERROR(this->get_logger(), "Failed to disable auto WB");
-          return;
-        }
-        success = video_cap_.set(cv::CAP_PROP_WB_TEMPERATURE, wb_temperature);
-        if (!success) {
-          stopped_.store(true, std::memory_order_release);
-          resp->set__success(false);
-          resp->set__message("cv::VideoCapture::set(CAP_PROP_WB_TEMPERATURE) failed");
-          RCLCPP_ERROR(this->get_logger(), "Failed to set WB temperature");
-          return;
-        }
       }
 
       // Start camera sampling thread
@@ -360,6 +296,7 @@ void CameraDriverNode::hw_enable_callback(
         std::memory_order_acquire))
     {
       camera_sampling_thread_.join();
+      close_camera();
     }
     resp->set__success(true);
     resp->set__message("");
