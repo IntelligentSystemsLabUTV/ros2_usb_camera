@@ -28,6 +28,7 @@
  * 51 Franklin St, Fifth Floor, Boston, MA 02110-1301 USA.
  */
 
+#include <cstring>
 #include <stdexcept>
 
 #include <usb_camera_driver/usb_camera_driver.hpp>
@@ -52,7 +53,19 @@ CameraDriverNode::CameraDriverNode(const rclcpp::NodeOptions & opts)
   // Initialize synchronization primitives
   stopped_.store(true, std::memory_order_release);
 
-#ifdef WITH_CUDA
+#if defined(WITH_VPI)
+  // Confirm VPI backend availability
+  VPIContext vpi_context = nullptr;
+  uint64_t vpi_context_flags = 0UL;
+  if (vpiContextGetCurrent(&vpi_context) != VPIStatus::VPI_SUCCESS ||
+    vpiContextGetFlags(vpi_context, &vpi_context_flags) != VPIStatus::VPI_SUCCESS ||
+    !(vpi_context_flags & VPI_BACKEND))
+  {
+    RCLCPP_FATAL(this->get_logger(), "No compatible VPI backend found");
+    throw std::runtime_error("No compatible VPI backend found");
+  }
+  RCLCPP_INFO(this->get_logger(), "VPI backend available");
+#elif defined(WITH_CUDA)
   // Check for GPU device availability
   if (!cv::cuda::getCudaEnabledDeviceCount()) {
     RCLCPP_FATAL(this->get_logger(), "No GPU device found");
@@ -98,9 +111,99 @@ CameraDriverNode::CameraDriverNode(const rclcpp::NodeOptions & opts)
   // Get and store current camera info and compute undistorsion and rectification maps
   if (cinfo_manager_->isCalibrated()) {
     camera_info_ = cinfo_manager_->getCameraInfo();
+#if defined(WITH_VPI)
+    VPIStatus err;
+
+    // Initialize rectification map region as the whole image
+    memset(&vpi_rect_map_, 0, sizeof(vpi_rect_map_));
+    vpi_rect_map_.grid.numHorizRegions = 1;
+    vpi_rect_map_.grid.numVertRegions = 1;
+    vpi_rect_map_.grid.regionWidth[0] = image_width_;
+    vpi_rect_map_.grid.regionHeight[0] = image_height_;
+    vpi_rect_map_.grid.horizInterval[0] = 1;
+    vpi_rect_map_.grid.vertInterval[0] = 1;
+    vpiWarpMapAllocData(&vpi_rect_map_);
+
+    // Get intrinsic camera parameters
+    vpi_camera_int_[0][0] = float(camera_info_.k[0]);
+    vpi_camera_int_[0][2] = float(camera_info_.k[2]);
+    vpi_camera_int_[1][1] = float(camera_info_.k[4]);
+    vpi_camera_int_[1][2] = float(camera_info_.k[5]);
+
+    // Set "plumb_bob" distortion model coefficients
+    memset(&vpi_distortion_model_, 0, sizeof(vpi_distortion_model_));
+    vpi_distortion_model_.k1 = float(camera_info_.d[0]);
+    vpi_distortion_model_.k2 = float(camera_info_.d[1]);
+    vpi_distortion_model_.k3 = float(camera_info_.d[4]);
+    vpi_distortion_model_.k4 = 0.0f;
+    vpi_distortion_model_.k5 = 0.0f;
+    vpi_distortion_model_.k6 = 0.0f;
+    vpi_distortion_model_.p1 = float(camera_info_.d[2]);
+    vpi_distortion_model_.p2 = float(camera_info_.d[3]);
+
+    // Create warp map from distortion model
+    err = vpiWarpMapGenerateFromPolynomialLensDistortionModel(
+      vpi_camera_int_,
+      vpi_camera_ext_,
+      vpi_camera_int_,
+      &vpi_distortion_model_,
+      &vpi_rect_map_);
+    if (err != VPIStatus::VPI_SUCCESS) {
+      RCLCPP_FATAL(this->get_logger(), "Failed to generate VPI rectification map");
+      throw std::runtime_error("Failed to generate VPI rectification map");
+    }
+
+    // Create VPI remap payload
+    err = vpiCreateRemap(
+      VPI_BACKEND,
+      &vpi_rect_map_,
+      &vpi_remap_payload_);
+    if (err != VPIStatus::VPI_SUCCESS) {
+      RCLCPP_FATAL(this->get_logger(), "Failed to create VPI remap payload");
+      throw std::runtime_error("Failed to create VPI remap payload");
+    }
+
+    // Create VPI stream
+    err = vpiStreamCreate(
+      VPI_BACKEND,
+      &vpi_stream_);
+    if (err != VPIStatus::VPI_SUCCESS) {
+      RCLCPP_FATAL(this->get_logger(), "Failed to create VPI stream");
+      throw std::runtime_error("Failed to create VPI stream");
+    }
+
+    // Create VPI image buffers
+    VPIStatus err_img1, err_img2, err_img3;
+    err_img1 = vpiImageCreate(
+      image_width_,
+      image_height_,
+      VPI_IMAGE_FORMAT_NV12_ER,
+      VPI_EXCLUSIVE_STREAM_ACCESS,
+      &vpi_frame_);
+    err_img2 = vpiImageCreate(
+      image_width_,
+      image_height_,
+      VPI_IMAGE_FORMAT_NV12_ER,
+      VPI_EXCLUSIVE_STREAM_ACCESS,
+      &vpi_frame_resized_);
+    err_img3 = vpiImageCreate(
+      image_width_,
+      image_height_,
+      VPI_IMAGE_FORMAT_NV12_ER,
+      VPI_EXCLUSIVE_STREAM_ACCESS,
+      &vpi_frame_rect_);
+    if (err_img1 != VPIStatus::VPI_SUCCESS ||
+      err_img2 != VPIStatus::VPI_SUCCESS ||
+      err_img3 != VPIStatus::VPI_SUCCESS)
+    {
+      RCLCPP_FATAL(this->get_logger(), "Failed to create VPI images");
+      throw std::runtime_error("Failed to create VPI images");
+    }
+#else
     A_ = cv::Mat(3, 3, CV_64FC1, camera_info_.k.data());
     D_ = cv::Mat(1, 5, CV_64FC1, camera_info_.d.data());
-#ifdef WITH_CUDA
+
+#if defined(WITH_CUDA)
     cv::initUndistortRectifyMap(
       A_,
       D_,
@@ -122,6 +225,7 @@ CameraDriverNode::CameraDriverNode(const rclcpp::NodeOptions & opts)
       CV_16SC2,
       map1_,
       map2_);
+#endif
 #endif
   }
 
@@ -171,6 +275,18 @@ CameraDriverNode::~CameraDriverNode()
   rect_pub_.reset();
   stream_pub_.reset();
   rect_stream_pub_.reset();
+
+#if defined(WITH_VPI)
+  // Destroy VPI resources
+  vpiImageDestroy(vpi_frame_);
+  vpiImageDestroy(vpi_frame_resized_);
+  vpiImageDestroy(vpi_frame_rect_);
+  vpiImageDestroy(vpi_frame_wrap_);
+  vpiImageDestroy(vpi_frame_rect_wrap_);
+  vpiStreamDestroy(vpi_stream_);
+  vpiPayloadDestroy(vpi_remap_payload_);
+  vpiWarpMapFreeData(&vpi_rect_map_);
+#endif
 }
 
 /**
@@ -180,6 +296,10 @@ void CameraDriverNode::camera_sampling_routine()
 {
   // High-resolution sleep timer, in nanoseconds
   rclcpp::WallRate sampling_timer(std::chrono::nanoseconds(int(1.0 / double(fps_) * 1000000000.0)));
+
+#if defined(WITH_VPI)
+  VPIStatus err;
+#endif
 
   RCLCPP_WARN(this->get_logger(), "Camera sampling thread started");
 
@@ -198,65 +318,143 @@ void CameraDriverNode::camera_sampling_routine()
 
       // Generate Image message
       Image::SharedPtr image_msg = nullptr, rect_image_msg = nullptr;
-      if (is_flipped_) {
-#ifdef WITH_CUDA
-        gpu_frame_.upload(frame_);
-        cv::cuda::flip(gpu_frame_, gpu_flipped_frame_, 0);
-        gpu_flipped_frame_.download(flipped_frame_);
-#else
-        cv::flip(frame_, flipped_frame_, 0);
-#endif
-        if (cinfo_manager_->isCalibrated()) {
-#ifdef WITH_CUDA
-          cv::cuda::remap(
-            gpu_flipped_frame_,
-            gpu_rectified_frame_,
-            gpu_map1_,
-            gpu_map2_,
-            cv::InterpolationFlags::INTER_LINEAR,
-            cv::BorderTypes::BORDER_CONSTANT);
-          gpu_rectified_frame_.download(rectified_frame_);
-#else
-          cv::remap(
-            flipped_frame_,
-            rectified_frame_,
-            map1_,
-            map2_,
-            cv::InterpolationFlags::INTER_LINEAR,
-            cv::BorderTypes::BORDER_CONSTANT);
-#endif
-          rect_image_msg = frame_to_msg(rectified_frame_);
-          rect_image_msg->header.set__stamp(timestamp);
-          rect_image_msg->header.set__frame_id(frame_id_);
-        }
-        image_msg = frame_to_msg(flipped_frame_);
-      } else {
-        if (cinfo_manager_->isCalibrated()) {
-#ifdef WITH_CUDA
-          gpu_frame_.upload(frame_);
-          cv::cuda::remap(
-            gpu_frame_,
-            gpu_rectified_frame_,
-            gpu_map1_,
-            gpu_map2_,
-            cv::InterpolationFlags::INTER_LINEAR,
-            cv::BorderTypes::BORDER_CONSTANT);
-          gpu_rectified_frame_.download(rectified_frame_);
-#else
-          cv::remap(
+      if (cinfo_manager_->isCalibrated()) {
+#if defined(WITH_VPI)
+        // Wrap the cv::Mat to a VPIImage
+        if (vpi_frame_wrap_ == nullptr) {
+          err = vpiImageCreateWrapperOpenCVMat(
             frame_,
-            rectified_frame_,
-            map1_,
-            map2_,
-            cv::InterpolationFlags::INTER_LINEAR,
-            cv::BorderTypes::BORDER_CONSTANT);
-#endif
-          rect_image_msg = frame_to_msg(rectified_frame_);
-          rect_image_msg->header.set__stamp(timestamp);
-          rect_image_msg->header.set__frame_id(frame_id_);
+            VPI_BACKEND |
+            VPI_EXCLUSIVE_STREAM_ACCESS,
+            &vpi_frame_wrap_);
+        } else {
+          err = vpiImageSetWrappedOpenCVMat(
+            vpi_frame_wrap_,
+            frame_);
         }
-        image_msg = frame_to_msg(frame_);
+        if (err != VPIStatus::VPI_SUCCESS) {
+          RCLCPP_ERROR(
+            this->get_logger(),
+            "Failed to wrap cv::Mat to VPIImage");
+          continue;
+        }
+
+        // Wrap the rectified cv::Mat to a VPIImage
+        if (vpi_frame_rect_wrap_ == nullptr) {
+          rectified_frame_ = cv::Mat(image_height_, image_width_, CV_8UC3);
+          err = vpiImageCreateWrapperOpenCVMat(
+            rectified_frame_,
+            VPI_BACKEND |
+            VPI_EXCLUSIVE_STREAM_ACCESS,
+            &vpi_frame_rect_wrap_);
+        } else {
+          err = vpiImageSetWrappedOpenCVMat(
+            vpi_frame_rect_wrap_,
+            rectified_frame_);
+        }
+        if (err != VPIStatus::VPI_SUCCESS) {
+          RCLCPP_ERROR(
+            this->get_logger(),
+            "Failed to wrap rectified cv::Mat to VPIImage");
+          continue;
+        }
+
+        // Convert the image from BGR to NV12
+        err = vpiSubmitConvertImageFormat(
+          vpi_stream_,
+          VPI_BACKEND,
+          vpi_frame_wrap_,
+          vpi_frame_,
+          NULL);
+        if (err != VPIStatus::VPI_SUCCESS) {
+          RCLCPP_ERROR(
+            this->get_logger(),
+            "Failed to convert image format BGR->NV12");
+          continue;
+        }
+
+        // Rescale image to desired size
+        err = vpiSubmitRescale(
+          vpi_stream_,
+          VPI_BACKEND,
+          vpi_frame_,
+          vpi_frame_resized_,
+          VPIInterpolationType::VPI_INTERP_LINEAR,
+          VPIBorderExtension::VPI_BORDER_ZERO,
+          0);
+        if (err != VPIStatus::VPI_SUCCESS) {
+          RCLCPP_ERROR(
+            this->get_logger(),
+            "Failed to rescale image");
+          continue;
+        }
+
+        // Rectify image
+        err = vpiSubmitRemap(
+          vpi_stream_,
+          VPI_BACKEND,
+          vpi_remap_payload_,
+          vpi_frame_resized_,
+          vpi_frame_rect_,
+          VPIInterpolationType::VPI_INTERP_LINEAR,
+          VPIBorderExtension::VPI_BORDER_ZERO,
+          0);
+        if (err != VPIStatus::VPI_SUCCESS) {
+          RCLCPP_ERROR(
+            this->get_logger(),
+            "Failed to rectify image");
+          continue;
+        }
+
+        // Convert back to BGR
+        err = vpiSubmitConvertImageFormat(
+          vpi_stream_,
+          VPI_BACKEND,
+          vpi_frame_rect_,
+          vpi_frame_rect_wrap_,
+          NULL);
+        if (err != VPIStatus::VPI_SUCCESS) {
+          RCLCPP_ERROR(
+            this->get_logger(),
+            "Failed to convert image format NV12->BGR");
+          continue;
+        }
+
+        // Wait for the stream to finish
+        err = vpiStreamSync(vpi_stream_);
+        if (err != VPIStatus::VPI_SUCCESS) {
+          RCLCPP_ERROR(
+            this->get_logger(),
+            "VPIStream processing failed");
+          continue;
+        }
+#elif defined(WITH_CUDA)
+        gpu_frame_.upload(frame_);
+        cv::cuda::resize(gpu_frame_, gpu_frame_, cv::Size(image_width_, image_height_));
+        cv::cuda::remap(
+          gpu_frame_,
+          gpu_rectified_frame_,
+          gpu_map1_,
+          gpu_map2_,
+          cv::InterpolationFlags::INTER_LINEAR,
+          cv::BorderTypes::BORDER_CONSTANT);
+        gpu_rectified_frame_.download(rectified_frame_);
+#else
+        cv::resize(frame_, frame_, cv::Size(image_width_, image_height_));
+        cv::remap(
+          frame_,
+          rectified_frame_,
+          map1_,
+          map2_,
+          cv::InterpolationFlags::INTER_LINEAR,
+          cv::BorderTypes::BORDER_CONSTANT);
+#endif
+
+        rect_image_msg = frame_to_msg(rectified_frame_);
+        rect_image_msg->header.set__stamp(timestamp);
+        rect_image_msg->header.set__frame_id(frame_id_);
       }
+      image_msg = frame_to_msg(frame_);
       image_msg->header.set__stamp(timestamp);
       image_msg->header.set__frame_id(frame_id_);
 

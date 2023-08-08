@@ -42,7 +42,24 @@
 #include <opencv2/imgproc.hpp>
 #include <opencv2/videoio.hpp>
 
-#ifdef WITH_CUDA
+#if defined(WITH_VPI)
+#include <vpi/Context.h>
+#include <vpi/Image.h>
+#include <vpi/LensDistortionModels.h>
+#include <vpi/OpenCVInterop.hpp>
+#include <vpi/Status.h>
+#include <vpi/Stream.h>
+#include <vpi/algo/ConvertImageFormat.h>
+#include <vpi/algo/Remap.h>
+#include <vpi/algo/Rescale.h>
+
+#ifdef VPI_PVA
+#define VPI_BACKEND VPIBackend::VPI_BACKEND_PVA
+#else
+#define VPI_BACKEND VPIBackend::VPI_BACKEND_CUDA
+#endif
+
+#elif defined(WITH_CUDA)
 #include <opencv2/core/cuda.hpp>
 #include <opencv2/cudaarithm.hpp>
 #include <opencv2/cudawarping.hpp>
@@ -87,16 +104,29 @@ private:
   /* Video capture device and buffers. */
   cv::VideoCapture video_cap_;
   cv::Mat frame_;
-  cv::Mat flipped_frame_;
   cv::Mat rectified_frame_;
+
+  /* Rectification buffers and maps. */
+#if defined(WITH_VPI)
+  VPIStream vpi_stream_ = nullptr;
+  VPIPayload vpi_remap_payload_ = nullptr;
+  VPIImage vpi_frame_ = nullptr, vpi_frame_resized_ = nullptr, vpi_frame_rect_ = nullptr;
+  VPIImage vpi_frame_wrap_ = nullptr, vpi_frame_rect_wrap_ = nullptr;
+  VPIWarpMap vpi_rect_map_;
+  VPIPolynomialLensDistortionModel vpi_distortion_model_;
+  VPICameraIntrinsic vpi_camera_int_;
+  const VPICameraExtrinsic vpi_camera_ext_ = {
+    {1, 0, 0, 0},
+    {0, 1, 0, 0},
+    {0, 0, 1, 0}};
+#else
   cv::Mat A_, D_;
   cv::Mat map1_, map2_;
-
-#ifdef WITH_CUDA
+#if defined(WITH_CUDA)
   cv::cuda::GpuMat gpu_frame_;
-  cv::cuda::GpuMat gpu_flipped_frame_;
   cv::cuda::GpuMat gpu_rectified_frame_;
   cv::cuda::GpuMat gpu_map1_, gpu_map2_;
+#endif
 #endif
 
   /* Node parameters. */
@@ -104,7 +134,6 @@ private:
   int64_t fps_ = 0;
   int64_t image_height_ = 0;
   int64_t image_width_ = 0;
-  bool is_flipped_ = false;
 
   /* Node parameters validation routine. */
   bool validate_brightness(const rclcpp::Parameter & p);

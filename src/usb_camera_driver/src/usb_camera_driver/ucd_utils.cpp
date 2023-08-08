@@ -148,11 +148,6 @@ void CameraDriverNode::close_camera()
  */
 Image::SharedPtr CameraDriverNode::frame_to_msg(cv::Mat & frame)
 {
-  // Resize the frame as per node parameters
-  if (frame.rows != image_width_ || frame.cols != image_height_) {
-    cv::resize(frame, frame, cv::Size(image_width_, image_height_));
-  }
-
   // Allocate new image message
   auto ros_image = std::make_shared<Image>();
 

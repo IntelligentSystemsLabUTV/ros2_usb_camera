@@ -19,6 +19,20 @@ endif()
 
 set(THREADS_PREFER_PTHREAD_FLAG ON)
 
+# If we're on a Jetson device with L4T 35, some paths and options must be configured to find stubs
+# that the Nvidia container runtime will then mount when an executable is loaded
+# NOTE: The condition we check is a bit of a hack and might stop working, but for now it works
+if(EXISTS "/etc/nv_tegra_release" AND EXISTS "/usr/lib/aarch64-linux-gnu/tegra")
+  file(STRINGS "/etc/nv_tegra_release" FILE_CONTENTS LIMIT_COUNT 1)
+  string(FIND "${FILE_CONTENTS}" "# R35" MATCH_INDEX)
+  if(${MATCH_INDEX} GREATER -1)
+    message(STATUS "Jetson R35 platform detected, configuring build to check for CUDA stubs")
+    list(APPEND CMAKE_LIBRARY_PATH "/usr/local/cuda/lib64/stubs_")
+    list(APPEND CMAKE_CXX_FLAGS "-Wl,--allow-shlib-undefined")
+    set(JETSON_R35_BUILD TRUE)
+  endif()
+endif()
+
 # Find dependencies
 find_package(ament_cmake REQUIRED)
 find_package(camera_calibration_parsers REQUIRED)
@@ -37,6 +51,7 @@ find_package(std_msgs REQUIRED)
 find_package(std_srvs REQUIRED)
 find_package(theora_wrappers REQUIRED)
 find_package(Threads REQUIRED)
+find_package(vpi)
 
 # Generate parameters source code
 generate_init_parameters(
@@ -52,7 +67,17 @@ list(APPEND USB_CAMERA_DRIVER_NODE_SRCS init_parameters.cpp)
 # USB Camera Driver node
 add_library(usb_camera_driver SHARED ${USB_CAMERA_DRIVER_NODE_SRCS})
 target_compile_definitions(usb_camera_driver PRIVATE COMPOSITION_BUILDING_DLL)
-if (CUDA_FOUND AND OpenCV_CUDA_VERSION)
+if(vpi_FOUND)
+  target_compile_definitions(usb_camera_driver PUBLIC WITH_VPI)
+  target_link_libraries(usb_camera_driver
+    vpi)
+  if(JETSON_R35_BUILD)
+    message(STATUS "Compiling code with VPI API for PVA backends")
+    target_compile_definitions(usb_camera_driver PUBLIC VPI_PVA)
+  else()
+    message(STATUS "Compiling code with VPI API for CUDA backends")
+  endif()
+elseif(CUDA_FOUND AND OpenCV_CUDA_VERSION)
   message(STATUS "OpenCV was built with CUDA version: ${OpenCV_CUDA_VERSION}")
   message(STATUS "Compiling code with cv::cuda API")
   target_compile_definitions(usb_camera_driver PUBLIC WITH_CUDA)

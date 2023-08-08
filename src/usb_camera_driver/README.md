@@ -45,7 +45,6 @@ Configuration files for node parameters can be found in `config`, with some stan
 - `frame_id`: id of the camera link, defaults to `map`.
 - `image_height`: image height, defaults to `480`.
 - `image_width`: image width, defaults to `640`.
-- `is_flipped`: toggles horizontal image flipping.
 - `publisher_depth`: depth of the image publisher queue.
 - `wb_temperature`: white balance temperature (hardware-dependent).
 

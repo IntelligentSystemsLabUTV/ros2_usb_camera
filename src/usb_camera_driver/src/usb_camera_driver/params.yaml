@@ -118,14 +118,6 @@ params:
     read_only: false
     var_name: image_width_
 
-  is_flipped:
-    type: bool
-    default_value: false
-    description: "Flip the image horizontally."
-    constraints: ""
-    read_only: false
-    var_name: is_flipped_
-
   publisher_depth:
     type: integer
     default_value: 5
