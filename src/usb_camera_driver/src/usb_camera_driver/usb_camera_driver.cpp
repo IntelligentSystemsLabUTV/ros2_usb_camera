@@ -89,15 +89,11 @@ CameraDriverNode::CameraDriverNode(const rclcpp::NodeOptions & opts)
   stream_pub_ = std::make_shared<TheoraWrappers::Publisher>(
     this,
     "~/" + this->get_parameter("base_topic_name").as_string() + "/image_color",
-    this->get_parameter("best_effort_qos").as_bool() ?
-    DUAQoS::Visualization::get_image_qos(depth).get_rmw_qos_profile() :
-    DUAQoS::get_image_qos(depth).get_rmw_qos_profile());
+    DUAQoS::Visualization::get_image_qos(depth).get_rmw_qos_profile());
   rect_stream_pub_ = std::make_shared<TheoraWrappers::Publisher>(
     this,
     "~/" + this->get_parameter("base_topic_name").as_string() + "/image_rect_color",
-    this->get_parameter("best_effort_qos").as_bool() ?
-    DUAQoS::Visualization::get_image_qos(depth).get_rmw_qos_profile() :
-    DUAQoS::get_image_qos(depth).get_rmw_qos_profile());
+    DUAQoS::Visualization::get_image_qos(depth).get_rmw_qos_profile());
 
   // Get and store current camera info and compute undistorsion and rectification maps
   if (cinfo_manager_->isCalibrated()) {
