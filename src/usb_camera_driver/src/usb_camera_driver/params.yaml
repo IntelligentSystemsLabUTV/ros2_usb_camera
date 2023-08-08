@@ -77,7 +77,7 @@ params:
     max_value: 9223372036854775807
     step: 1
     description: "Camera frame rate."
-    constraints: "Changes require camera restart."
+    constraints: "Changes require camera restart, camera-dependent, so even if the hardware doesn't support the requested frame rate, the driver will observe it with timed sampling."
     read_only: false
     var_name: fps_
 
