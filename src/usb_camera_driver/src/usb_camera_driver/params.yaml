@@ -42,6 +42,13 @@ params:
     constraints: "Must be a valid file URL."
     read_only: true
 
+  camera_device_file:
+    type: string
+    default_value: ""
+    description: "Camera device file name."
+    constraints: "Must be a valid device file full path, overrides camera_id if specified."
+    read_only: true
+
   camera_id:
     type: integer
     default_value: 0

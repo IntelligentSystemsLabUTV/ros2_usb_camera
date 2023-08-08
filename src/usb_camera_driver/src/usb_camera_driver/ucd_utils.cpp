@@ -45,7 +45,23 @@ namespace USBCameraDriver
 bool CameraDriverNode::open_camera()
 {
   // Open capture device
-  if (!video_cap_.open(this->get_parameter("camera_id").as_int(), cv::CAP_V4L2) ||
+  bool opened = false;
+  std::string camera_device_file = this->get_parameter("camera_device_file").as_string();
+  if (camera_device_file.empty()) {
+    int64_t camera_id = this->get_parameter("camera_id").as_int();
+    RCLCPP_INFO(
+      this->get_logger(),
+      "Opening camera with ID: %ld",
+      camera_id);
+    opened = video_cap_.open(camera_id, cv::CAP_V4L2);
+  } else {
+    RCLCPP_INFO(
+      this->get_logger(),
+      "Opening camera from device file: %s",
+      camera_device_file.c_str());
+    opened = video_cap_.open(camera_device_file, cv::CAP_V4L2);
+  }
+  if (!opened ||
     !video_cap_.set(cv::CAP_PROP_FRAME_WIDTH, image_width_) ||
     !video_cap_.set(cv::CAP_PROP_FRAME_HEIGHT, image_height_) ||
     !video_cap_.set(cv::CAP_PROP_FPS, fps_))
