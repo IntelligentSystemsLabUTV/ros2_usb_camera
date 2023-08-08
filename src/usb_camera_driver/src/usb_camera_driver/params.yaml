@@ -3,6 +3,13 @@ namespace: USBCameraDriver
 node_class_name: CameraDriverNode
 
 params:
+  autostart:
+    type: bool
+    default_value: false
+    description: "Start the camera driver on node startup."
+    constraints: ""
+    read_only: true
+
   base_topic_name:
     type: string
     default_value: camera

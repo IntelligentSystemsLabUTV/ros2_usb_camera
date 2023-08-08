@@ -28,6 +28,8 @@
  * 51 Franklin St, Fifth Floor, Boston, MA 02110-1301 USA.
  */
 
+#include <stdexcept>
+
 #include <usb_camera_driver/usb_camera_driver.hpp>
 
 using namespace std::chrono_literals;
@@ -123,6 +125,18 @@ CameraDriverNode::CameraDriverNode(const rclcpp::NodeOptions & opts)
       std::placeholders::_2));
 
   RCLCPP_INFO(this->get_logger(), "Node initialized");
+
+  // Start sampling if requested
+  if (this->get_parameter("autostart").as_bool()) {
+    if (!open_camera()) {
+      RCLCPP_FATAL(this->get_logger(), "Autostart failed: failed to open camera device");
+      throw std::runtime_error("Autostart failed: failed to open camera device");
+    }
+    stopped_.store(false, std::memory_order_release);
+    camera_sampling_thread_ = std::thread(
+      &CameraDriverNode::camera_sampling_routine,
+      this);
+  }
 }
 
 /**
@@ -281,9 +295,9 @@ void CameraDriverNode::hw_enable_callback(
       }
 
       // Start camera sampling thread
-      camera_sampling_thread_ = std::thread{
+      camera_sampling_thread_ = std::thread(
         &CameraDriverNode::camera_sampling_routine,
-        this};
+        this);
     }
     resp->set__success(true);
     resp->set__message("");
@@ -306,4 +320,4 @@ void CameraDriverNode::hw_enable_callback(
 } // namespace USBCameraDriver
 
 #include <rclcpp_components/register_node_macro.hpp>
-RCLCPP_COMPONENTS_REGISTER_NODE(USBCameraDriver::CameraDriverNode)
+RCLCPP_COMPONENTS_REGISTER_NODE(USBCameraDriver::CameraDriverNode);

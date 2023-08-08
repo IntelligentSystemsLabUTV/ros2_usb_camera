@@ -159,6 +159,7 @@ Image::SharedPtr CameraDriverNode::frame_to_msg(cv::Mat & frame)
  * @brief Validates the brightness parameter.
  *
  * @param p Parameter to validate.
+ * @return True if the parameter is valid, false otherwise.
  */
 bool CameraDriverNode::validate_brightness(const rclcpp::Parameter & p)
 {
@@ -176,6 +177,7 @@ bool CameraDriverNode::validate_brightness(const rclcpp::Parameter & p)
  * @brief Validates the exposure parameter.
  *
  * @param p Parameter to validate.
+ * @return True if the parameter is valid, false otherwise.
  */
 bool CameraDriverNode::validate_exposure(const rclcpp::Parameter & p)
 {
@@ -213,6 +215,7 @@ bool CameraDriverNode::validate_exposure(const rclcpp::Parameter & p)
  * @brief Validates the WB temperature parameter.
  *
  * @param p Parameter to validate.
+ * @return True if the parameter is valid, false otherwise.
  */
 bool CameraDriverNode::validate_wb_temperature(const rclcpp::Parameter & p)
 {

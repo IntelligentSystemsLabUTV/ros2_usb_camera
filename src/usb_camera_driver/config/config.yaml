@@ -1,5 +1,6 @@
 /usb_camera/usb_camera_driver:
   ros__parameters:
+    autostart: true
     base_topic_name: camera
     best_effort_qos: true
     brightness: 0.0
