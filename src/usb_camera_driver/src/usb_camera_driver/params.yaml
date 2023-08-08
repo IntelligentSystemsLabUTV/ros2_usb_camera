@@ -6,7 +6,7 @@ params:
   autostart:
     type: bool
     default_value: false
-    description: "Start the camera driver on node startup."
+    description: "Start the camera driver on node initialization."
     constraints: ""
     read_only: true
 
@@ -62,7 +62,7 @@ params:
   camera_name:
     type: string
     default_value: "camera"
-    description: "Camera name from the configuration file."
+    description: "Camera name in the configuration file."
     constraints: ""
     read_only: true
 
