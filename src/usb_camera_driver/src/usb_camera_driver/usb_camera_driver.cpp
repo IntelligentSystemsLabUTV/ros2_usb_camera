@@ -85,6 +85,20 @@ CameraDriverNode::CameraDriverNode(const rclcpp::NodeOptions & opts)
       DUAQoS::Visualization::get_image_qos(depth).get_rmw_qos_profile() :
       DUAQoS::get_image_qos(depth).get_rmw_qos_profile()));
 
+  // Create Theora stream publishers
+  stream_pub_ = std::make_shared<TheoraWrappers::Publisher>(
+    this,
+    "~/" + this->get_parameter("base_topic_name").as_string() + "/image_color",
+    this->get_parameter("best_effort_qos").as_bool() ?
+    DUAQoS::Visualization::get_image_qos(depth).get_rmw_qos_profile() :
+    DUAQoS::get_image_qos(depth).get_rmw_qos_profile());
+  rect_stream_pub_ = std::make_shared<TheoraWrappers::Publisher>(
+    this,
+    "~/" + this->get_parameter("base_topic_name").as_string() + "/image_rect_color",
+    this->get_parameter("best_effort_qos").as_bool() ?
+    DUAQoS::Visualization::get_image_qos(depth).get_rmw_qos_profile() :
+    DUAQoS::get_image_qos(depth).get_rmw_qos_profile());
+
   // Get and store current camera info and compute undistorsion and rectification maps
   if (cinfo_manager_->isCalibrated()) {
     camera_info_ = cinfo_manager_->getCameraInfo();
@@ -159,6 +173,8 @@ CameraDriverNode::~CameraDriverNode()
   rect_pub_->shutdown();
   camera_pub_.reset();
   rect_pub_.reset();
+  stream_pub_.reset();
+  rect_stream_pub_.reset();
 }
 
 /**
@@ -255,8 +271,10 @@ void CameraDriverNode::camera_sampling_routine()
 
       // Publish new frame together with its CameraInfo on all available transports
       camera_pub_->publish(image_msg, camera_info_msg);
+      stream_pub_->publish(image_msg);
       if (cinfo_manager_->isCalibrated()) {
         rect_pub_->publish(rect_image_msg);
+        rect_stream_pub_->publish(rect_image_msg);
       }
     } else {
       RCLCPP_INFO(this->get_logger(), "Empty frame");

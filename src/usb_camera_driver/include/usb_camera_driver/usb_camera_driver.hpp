@@ -37,6 +37,17 @@
 #include <string>
 #include <thread>
 
+#include <opencv2/calib3d.hpp>
+#include <opencv2/core.hpp>
+#include <opencv2/imgproc.hpp>
+#include <opencv2/videoio.hpp>
+
+#ifdef WITH_CUDA
+#include <opencv2/core/cuda.hpp>
+#include <opencv2/cudaarithm.hpp>
+#include <opencv2/cudawarping.hpp>
+#endif
+
 #include <rclcpp/rclcpp.hpp>
 
 #include <dua_node/dua_node.hpp>
@@ -52,16 +63,7 @@
 
 #include <image_transport/image_transport.hpp>
 
-#include <opencv2/calib3d.hpp>
-#include <opencv2/core.hpp>
-#include <opencv2/imgproc.hpp>
-#include <opencv2/videoio.hpp>
-
-#ifdef WITH_CUDA
-#include <opencv2/core/cuda.hpp>
-#include <opencv2/cudaarithm.hpp>
-#include <opencv2/cudawarping.hpp>
-#endif
+#include <theora_wrappers/publisher.hpp>
 
 using namespace sensor_msgs::msg;
 using namespace std_srvs::srv;
@@ -120,6 +122,10 @@ private:
   std::shared_ptr<image_transport::Publisher> rect_pub_;
   camera_info_manager::CameraInfo camera_info_;
   std::shared_ptr<camera_info_manager::CameraInfoManager> cinfo_manager_;
+
+  /* Theora stream publishers. */
+  std::shared_ptr<TheoraWrappers::Publisher> stream_pub_;
+  std::shared_ptr<TheoraWrappers::Publisher> rect_stream_pub_;
 
   /* Utility routines. */
   bool open_camera();
