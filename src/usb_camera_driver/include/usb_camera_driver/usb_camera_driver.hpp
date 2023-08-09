@@ -37,6 +37,8 @@
 #include <string>
 #include <thread>
 
+#define WITH_VPI
+
 #include <opencv2/calib3d.hpp>
 #include <opencv2/core.hpp>
 #include <opencv2/imgproc.hpp>
@@ -52,12 +54,6 @@
 #include <vpi/algo/ConvertImageFormat.h>
 #include <vpi/algo/Remap.h>
 #include <vpi/algo/Rescale.h>
-
-#ifdef VPI_PVA
-#define VPI_BACKEND VPIBackend::VPI_BACKEND_PVA
-#else
-#define VPI_BACKEND VPIBackend::VPI_BACKEND_CUDA
-#endif
 
 #elif defined(WITH_CUDA)
 #include <opencv2/core/cuda.hpp>
@@ -108,6 +104,7 @@ private:
 
   /* Rectification buffers and maps. */
 #if defined(WITH_VPI)
+  VPIBackend vpi_backend_;
   VPIStream vpi_stream_ = nullptr;
   VPIPayload vpi_remap_payload_ = nullptr;
   VPIImage vpi_frame_ = nullptr, vpi_frame_resized_ = nullptr, vpi_frame_rect_ = nullptr;

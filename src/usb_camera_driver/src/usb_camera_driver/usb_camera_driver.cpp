@@ -59,19 +59,26 @@ CameraDriverNode::CameraDriverNode(const rclcpp::NodeOptions & opts)
   uint64_t vpi_context_flags = 0UL;
   if (vpiContextGetCurrent(&vpi_context) != VPIStatus::VPI_SUCCESS ||
     vpiContextGetFlags(vpi_context, &vpi_context_flags) != VPIStatus::VPI_SUCCESS ||
-    !(vpi_context_flags & VPI_BACKEND))
+    (!(vpi_context_flags & VPIBackend::VPI_BACKEND_PVA) &&
+    !(vpi_context_flags & VPIBackend::VPI_BACKEND_CUDA)))
   {
     RCLCPP_FATAL(this->get_logger(), "No compatible VPI backend found");
     throw std::runtime_error("No compatible VPI backend found");
   }
-  RCLCPP_INFO(this->get_logger(), "VPI backend available");
+  if (vpi_context_flags & VPIBackend::VPI_BACKEND_PVA) {
+    vpi_backend_ = VPIBackend::VPI_BACKEND_PVA;
+    RCLCPP_INFO(this->get_logger(), "VPI PVA backend available");
+  } else {
+    vpi_backend_ = VPIBackend::VPI_BACKEND_CUDA;
+    RCLCPP_INFO(this->get_logger(), "VPI CUDA backend available");
+  }
 #elif defined(WITH_CUDA)
   // Check for GPU device availability
   if (!cv::cuda::getCudaEnabledDeviceCount()) {
-    RCLCPP_FATAL(this->get_logger(), "No GPU device found");
-    throw std::runtime_error("No GPU device found");
+    RCLCPP_FATAL(this->get_logger(), "cv::cuda: No GPU device found");
+    throw std::runtime_error("cv::cuda: No GPU device found");
   }
-  RCLCPP_INFO(this->get_logger(), "GPU device available");
+  RCLCPP_INFO(this->get_logger(), "cv::cuda: GPU device available");
 #endif
 
   // Create and set up CameraInfoManager
@@ -155,7 +162,7 @@ CameraDriverNode::CameraDriverNode(const rclcpp::NodeOptions & opts)
 
     // Create VPI remap payload
     err = vpiCreateRemap(
-      VPI_BACKEND,
+      vpi_backend_,
       &vpi_rect_map_,
       &vpi_remap_payload_);
     if (err != VPIStatus::VPI_SUCCESS) {
@@ -165,7 +172,7 @@ CameraDriverNode::CameraDriverNode(const rclcpp::NodeOptions & opts)
 
     // Create VPI stream
     err = vpiStreamCreate(
-      VPI_BACKEND,
+      vpi_backend_,
       &vpi_stream_);
     if (err != VPIStatus::VPI_SUCCESS) {
       RCLCPP_FATAL(this->get_logger(), "Failed to create VPI stream");
@@ -324,7 +331,7 @@ void CameraDriverNode::camera_sampling_routine()
         if (vpi_frame_wrap_ == nullptr) {
           err = vpiImageCreateWrapperOpenCVMat(
             frame_,
-            VPI_BACKEND |
+            vpi_backend_ |
             VPI_EXCLUSIVE_STREAM_ACCESS,
             &vpi_frame_wrap_);
         } else {
@@ -344,7 +351,7 @@ void CameraDriverNode::camera_sampling_routine()
           rectified_frame_ = cv::Mat(image_height_, image_width_, CV_8UC3);
           err = vpiImageCreateWrapperOpenCVMat(
             rectified_frame_,
-            VPI_BACKEND |
+            vpi_backend_ |
             VPI_EXCLUSIVE_STREAM_ACCESS,
             &vpi_frame_rect_wrap_);
         } else {
@@ -362,7 +369,7 @@ void CameraDriverNode::camera_sampling_routine()
         // Convert the image from BGR to NV12
         err = vpiSubmitConvertImageFormat(
           vpi_stream_,
-          VPI_BACKEND,
+          vpi_backend_,
           vpi_frame_wrap_,
           vpi_frame_,
           NULL);
@@ -376,7 +383,7 @@ void CameraDriverNode::camera_sampling_routine()
         // Rescale image to desired size
         err = vpiSubmitRescale(
           vpi_stream_,
-          VPI_BACKEND,
+          vpi_backend_,
           vpi_frame_,
           vpi_frame_resized_,
           VPIInterpolationType::VPI_INTERP_LINEAR,
@@ -392,7 +399,7 @@ void CameraDriverNode::camera_sampling_routine()
         // Rectify image
         err = vpiSubmitRemap(
           vpi_stream_,
-          VPI_BACKEND,
+          vpi_backend_,
           vpi_remap_payload_,
           vpi_frame_resized_,
           vpi_frame_rect_,
@@ -409,7 +416,7 @@ void CameraDriverNode::camera_sampling_routine()
         // Convert back to BGR
         err = vpiSubmitConvertImageFormat(
           vpi_stream_,
-          VPI_BACKEND,
+          vpi_backend_,
           vpi_frame_rect_,
           vpi_frame_rect_wrap_,
           NULL);
