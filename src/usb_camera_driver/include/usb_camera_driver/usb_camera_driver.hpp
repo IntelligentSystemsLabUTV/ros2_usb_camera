@@ -37,8 +37,6 @@
 #include <string>
 #include <thread>
 
-#define WITH_VPI
-
 #include <opencv2/calib3d.hpp>
 #include <opencv2/core.hpp>
 #include <opencv2/imgproc.hpp>
