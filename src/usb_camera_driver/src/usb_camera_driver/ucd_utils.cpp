@@ -365,19 +365,22 @@ bool CameraDriverNode::process_frame()
    */
 
 #if defined(WITH_VPI)
+  // Convert input frame to VPI-compatible format
+  cv::cvtColor(frame_, frame_vpi_, cv::COLOR_RGB2RGBA);
+
   VPIStatus err;
 
   // Wrap the cv::Mat to a VPIImage (input, output)
   if (vpi_frame_wrap_ == nullptr) {
     err = vpiImageCreateWrapperOpenCVMat(
-      frame_,
+      frame_vpi_,
       vpi_backend_ |
       VPI_EXCLUSIVE_STREAM_ACCESS,
       &vpi_frame_wrap_);
   } else {
     err = vpiImageSetWrappedOpenCVMat(
       vpi_frame_wrap_,
-      frame_);
+      frame_vpi_);
   }
   if (err != VPIStatus::VPI_SUCCESS) {
     RCLCPP_ERROR(
@@ -389,16 +392,16 @@ bool CameraDriverNode::process_frame()
   // Wrap the rectified cv::Mat to a VPIImage (output)
   if (cinfo_manager_->isCalibrated()) {
     if (vpi_frame_rect_wrap_ == nullptr) {
-      rectified_frame_ = cv::Mat(image_height_, image_width_, CV_8UC3);
+      rectified_frame_vpi_ = cv::Mat(image_height_, image_width_, CV_8UC4);
       err = vpiImageCreateWrapperOpenCVMat(
-        rectified_frame_,
+        rectified_frame_vpi_,
         vpi_backend_ |
         VPI_EXCLUSIVE_STREAM_ACCESS,
         &vpi_frame_rect_wrap_);
     } else {
       err = vpiImageSetWrappedOpenCVMat(
         vpi_frame_rect_wrap_,
-        rectified_frame_);
+        rectified_frame_vpi_);
     }
     if (err != VPIStatus::VPI_SUCCESS) {
       RCLCPP_ERROR(
@@ -413,9 +416,9 @@ bool CameraDriverNode::process_frame()
     if (vpi_frame_rot_wrap_ == nullptr) {
       int32_t rot_width = 0, rot_height = 0;
       vpiImageGetSize(vpi_frame_rot_, &rot_width, &rot_height);
-      frame_rot_ = cv::Mat(rot_height, rot_width, CV_8UC3);
+      frame_rot_vpi_ = cv::Mat(rot_height, rot_width, CV_8UC4);
       err = vpiImageCreateWrapperOpenCVMat(
-        frame_rot_,
+        frame_rot_vpi_,
         vpi_backend_ |
         VPI_EXCLUSIVE_STREAM_ACCESS,
         &vpi_frame_rot_wrap_);
@@ -429,9 +432,9 @@ bool CameraDriverNode::process_frame()
     if (cinfo_manager_->isCalibrated() && vpi_frame_rect_rot_wrap_ == nullptr) {
       int32_t rot_width = 0, rot_height = 0;
       vpiImageGetSize(vpi_frame_rect_rot_, &rot_width, &rot_height);
-      frame_rect_rot_ = cv::Mat(rot_height, rot_width, CV_8UC3);
+      frame_rect_rot_vpi_ = cv::Mat(rot_height, rot_width, CV_8UC4);
       err = vpiImageCreateWrapperOpenCVMat(
-        frame_rect_rot_,
+        frame_rect_rot_vpi_,
         vpi_backend_ |
         VPI_EXCLUSIVE_STREAM_ACCESS,
         &vpi_frame_rect_rot_wrap_);
@@ -596,6 +599,19 @@ bool CameraDriverNode::process_frame()
       this->get_logger(),
       "CameraDriverNode::process_frame: VPIStream processing failed");
     return false;
+  }
+
+  // Convert output frames back to RGB
+  if (rotation_ != 0) {
+    cv::cvtColor(frame_rot_vpi_, frame_rot_, cv::COLOR_RGBA2RGB);
+    if (cinfo_manager_->isCalibrated()) {
+      cv::cvtColor(frame_rect_rot_vpi_, frame_rect_rot_, cv::COLOR_RGBA2RGB);
+    }
+  } else {
+    cv::cvtColor(frame_vpi_, frame_, cv::COLOR_RGBA2RGB);
+    if (cinfo_manager_->isCalibrated()) {
+      cv::cvtColor(rectified_frame_vpi_, rectified_frame_, cv::COLOR_RGBA2RGB);
+    }
   }
 
   return true;
