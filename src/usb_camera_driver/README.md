@@ -11,7 +11,7 @@ Simple ROS 2 driver node for USB monocular cameras compatible with the `Video4Li
 - Supports namespace and node name remappings, in order to run different cameras with multiple instances of the node.
 - ROS 2 component compilation and installation.
 - Optimized memory handling.
-- Supports Nvidia CUDA hardware and the OpenCV GPU module.
+- Supports Nvidia CUDA hardware, the OpenCV GPU module, and the Nvidia VPI API.
 - High-resolution, thread-based camera sampling.
 - Offers both reliable and best-effort QoS profiles, configurable via node parameters.
 
@@ -27,6 +27,36 @@ You can use `RViz` to display the frames being streamed:
 
 - topic `Reliability Policy` must be set to what the corresponding node parameter has been set to;
 - `Fixed Frame` in `Global Options` must be set appropriately, and a transform from the camera frame to the fixed frame must be available.
+
+### Build options
+
+The build process is mostly automatic, and CMake should detect the best configuration for the machine it is running on, including containerized environments. However, some options can be specified manually:
+
+- `NO_CUDA`: disables CUDA code paths, even if a compatible installation is available (default: `OFF`).
+- `VPI`: enables Nvidia VPI code paths **(default: `OFF`)**.
+
+Build options can be passed to CMake via `colcon`:
+
+```bash
+colcon build --ament-cmake-args "-DNO_CUDA=ON" ...
+```
+
+The choice to leave VPI code paths off by default is due to the fact that, upon testing, the library has not been found to be stable enough. It is still possible to enable it manually, but keep in mind that it might not work.
+
+The platforms on which the VPI code was tested were (referring to [`dua-foundation`](https://github.com/IntelligentSystemsLabUTV/dua-foundation) targets):
+
+- `x86-cudev`
+- `jetson5c7`
+
+so an x86-64, Ubuntu 22.04 environment with CUDA 11.7, and a Jetpack 5.0.2, L4T 35.1 one.
+
+The pipeline goes from image acquisition to resize, rectification, rotation, and encoding back in host memory. There is a single stream that attempts to run frame preparation in the CUDA backend, and remappings (rectification, rotation) on the VIC if available (*e.g.* on Jetson devices). The stream is synchronized before encoding and publishing.
+
+In both cases, `libnvvpi2` version was `2.1.6`.
+
+In the `x86-cudev` case, the VPI code worked flawlessly on the CUDA backend. On the `jetson5c7` target, however, the VPI code stopped working after a few frames, apparently due to a memory leak in the VPI library for Jetson devices: `vpiStreamSync` returns an undocumented `OUT_OF_MEMORY` error code, and the stream is no longer usable.
+
+**For this reason, until a software update solves the issue, the VPI code is disabled by default.**
 
 ### Node parameters
 

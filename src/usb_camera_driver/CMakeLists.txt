@@ -19,6 +19,10 @@ endif()
 
 set(THREADS_PREFER_PTHREAD_FLAG ON)
 
+# Build options
+option(NO_CUDA "Disables CUDA code" OFF)
+option(VPI "Enables Nvidia VPI API code" OFF)
+
 # If we're on a Jetson device with L4T 35, some paths and options must be configured to find stubs
 # that the Nvidia container runtime will then mount when an executable is loaded
 # NOTE: The condition we check is a bit of a hack and might stop working, but for now it works
@@ -36,7 +40,9 @@ endif()
 find_package(ament_cmake REQUIRED)
 find_package(camera_calibration_parsers REQUIRED)
 find_package(camera_info_manager REQUIRED)
-find_package(CUDA)
+if(NOT NO_CUDA)
+  find_package(CUDA QUIET)
+endif()
 find_package(dua_app_management REQUIRED)
 find_package(dua_node REQUIRED)
 find_package(dua_qos REQUIRED)
@@ -50,7 +56,9 @@ find_package(std_msgs REQUIRED)
 find_package(std_srvs REQUIRED)
 find_package(theora_wrappers REQUIRED)
 find_package(Threads REQUIRED)
-find_package(vpi)
+if(VPI)
+  find_package(vpi QUIET)
+endif()
 
 # Generate parameters source code
 generate_init_parameters(
@@ -71,7 +79,7 @@ if(vpi_FOUND)
   target_compile_definitions(usb_camera_driver PUBLIC WITH_VPI)
   target_link_libraries(usb_camera_driver
     vpi)
-elseif(CUDA_FOUND AND OpenCV_CUDA_VERSION)
+elseif(NOT NO_CUDA AND CUDA_FOUND AND OpenCV_CUDA_VERSION)
   message(STATUS "OpenCV was built with CUDA version: ${OpenCV_CUDA_VERSION}")
   message(STATUS "Compiling code with cv::cuda API")
   target_compile_definitions(usb_camera_driver PUBLIC WITH_CUDA)
