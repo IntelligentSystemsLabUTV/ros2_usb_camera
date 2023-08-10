@@ -211,15 +211,6 @@ void CameraDriverNode::init_vpi()
     }
   }
 
-  // Create VPI stream
-  err = vpiStreamCreate(
-    vpi_backend_ | VPIBackend::VPI_BACKEND_CUDA,
-    &vpi_stream_);
-  if (err != VPIStatus::VPI_SUCCESS) {
-    RCLCPP_FATAL(this->get_logger(), "CameraDriverNode::init_vpi: Failed to create VPI stream");
-    throw std::runtime_error("CameraDriverNode::init_vpi: Failed to create VPI stream");
-  }
-
   // Initialize rotation data and warp map
   int32_t rot_width = 0, rot_height = 0;
   if (rotation_ != 0) {
@@ -361,6 +352,15 @@ bool CameraDriverNode::process_frame()
 
 #if defined(WITH_VPI)
   VPIStatus err;
+
+  // Create VPI stream
+  err = vpiStreamCreate(
+    vpi_backend_ | VPIBackend::VPI_BACKEND_CUDA,
+    &vpi_stream_);
+  if (err != VPIStatus::VPI_SUCCESS) {
+    RCLCPP_FATAL(this->get_logger(), "CameraDriverNode::process_frame: Failed to create VPI stream");
+    throw std::runtime_error("CameraDriverNode::process_frame: Failed to create VPI stream");
+  }
 
   // Wrap the cv::Mat to a VPIImage (input, output)
   if (vpi_frame_wrap_ == nullptr) {
@@ -588,6 +588,10 @@ bool CameraDriverNode::process_frame()
       "CameraDriverNode::process_frame: VPIStream processing failed");
     return false;
   }
+
+  // Destroy stream
+  vpiStreamDestroy(vpi_stream_);
+  vpi_stream_ = nullptr;
 
   return true;
 #elif defined(WITH_CUDA)

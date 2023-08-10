@@ -209,6 +209,7 @@ CameraDriverNode::~CameraDriverNode()
 
 #if defined(WITH_VPI)
   // Destroy VPI resources
+  vpiStreamDestroy(vpi_stream_);
   vpiImageDestroy(vpi_frame_);
   vpiImageDestroy(vpi_frame_resized_);
   vpiImageDestroy(vpi_frame_rot_);
@@ -218,7 +219,6 @@ CameraDriverNode::~CameraDriverNode()
   vpiImageDestroy(vpi_frame_rect_wrap_);
   vpiImageDestroy(vpi_frame_rot_wrap_);
   vpiImageDestroy(vpi_frame_rect_rot_wrap_);
-  vpiStreamDestroy(vpi_stream_);
   vpiPayloadDestroy(vpi_remap_payload_);
   vpiPayloadDestroy(vpi_rot_payload_);
   vpiWarpMapFreeData(&vpi_rect_map_);
