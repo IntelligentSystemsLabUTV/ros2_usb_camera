@@ -29,8 +29,13 @@ def generate_launch_description():
     )
 
     # Declare launch arguments
+    nm = LaunchConfiguration('name')
     ns = LaunchConfiguration('namespace')
     cf = LaunchConfiguration('cf')
+    nm_launch_arg = DeclareLaunchArgument(
+        'name',
+        default_value='usb_camera_driver'
+    )
     ns_launch_arg = DeclareLaunchArgument(
         'namespace',
         default_value='usb_camera'
@@ -39,6 +44,7 @@ def generate_launch_description():
         'cf',
         default_value=config
     )
+    ld.add_action(nm_launch_arg)
     ld.add_action(ns_launch_arg)
     ld.add_action(cf_launch_arg)
 
@@ -46,6 +52,7 @@ def generate_launch_description():
     node = Node(
         package='usb_camera_driver',
         executable='usb_camera_app',
+        name=nm,
         namespace=ns,
         exec_name='usb_camera_app',
         emulate_tty=True,
