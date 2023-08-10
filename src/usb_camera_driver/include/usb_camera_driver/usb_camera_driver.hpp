@@ -119,9 +119,6 @@ private:
     {1, 0, 0, 0},
     {0, 1, 0, 0},
     {0, 0, 1, 0}};
-
-  // Compatibility with VPI backends requires conversion to/from 4-channel formats
-  cv::Mat frame_vpi_, rectified_frame_vpi_, frame_rot_vpi_, frame_rect_rot_vpi_;
 #else
   cv::Mat A_, D_;
   cv::Mat map1_, map2_;
