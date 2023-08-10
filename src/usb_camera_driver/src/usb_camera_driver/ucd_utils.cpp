@@ -293,12 +293,14 @@ void CameraDriverNode::init_vpi()
     image_width_,
     image_height_,
     VPI_IMAGE_FORMAT_NV12_ER,
+    vpi_backend_ |
     VPI_EXCLUSIVE_STREAM_ACCESS,
     &vpi_frame_);
   err_img2 = vpiImageCreate(
     image_width_,
     image_height_,
     VPI_IMAGE_FORMAT_NV12_ER,
+    vpi_backend_ |
     VPI_EXCLUSIVE_STREAM_ACCESS,
     &vpi_frame_resized_);
   if (cinfo_manager_->isCalibrated()) {
@@ -306,6 +308,7 @@ void CameraDriverNode::init_vpi()
       image_width_,
       image_height_,
       VPI_IMAGE_FORMAT_NV12_ER,
+      vpi_backend_ |
       VPI_EXCLUSIVE_STREAM_ACCESS,
       &vpi_frame_rect_);
   }
@@ -314,6 +317,7 @@ void CameraDriverNode::init_vpi()
       rot_width,
       rot_height,
       VPI_IMAGE_FORMAT_NV12_ER,
+      vpi_backend_ |
       VPI_EXCLUSIVE_STREAM_ACCESS,
       &vpi_frame_rot_);
     if (cinfo_manager_->isCalibrated()) {
@@ -321,6 +325,7 @@ void CameraDriverNode::init_vpi()
         rot_width,
         rot_height,
         VPI_IMAGE_FORMAT_NV12_ER,
+        vpi_backend_ |
         VPI_EXCLUSIVE_STREAM_ACCESS,
         &vpi_frame_rect_rot_);
     }

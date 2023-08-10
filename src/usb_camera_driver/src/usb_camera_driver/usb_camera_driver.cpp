@@ -58,15 +58,15 @@ CameraDriverNode::CameraDriverNode(const rclcpp::NodeOptions & opts)
   uint64_t vpi_context_flags = 0UL;
   if (vpiContextGetCurrent(&vpi_context) != VPIStatus::VPI_SUCCESS ||
     vpiContextGetFlags(vpi_context, &vpi_context_flags) != VPIStatus::VPI_SUCCESS ||
-    (!(vpi_context_flags & VPIBackend::VPI_BACKEND_PVA) &&
+    (!(vpi_context_flags & VPIBackend::VPI_BACKEND_VIC) &&
     !(vpi_context_flags & VPIBackend::VPI_BACKEND_CUDA)))
   {
     RCLCPP_FATAL(this->get_logger(), "No compatible VPI backend found");
     throw std::runtime_error("No compatible VPI backend found");
   }
-  if (vpi_context_flags & VPIBackend::VPI_BACKEND_PVA) {
-    vpi_backend_ = VPIBackend::VPI_BACKEND_PVA;
-    RCLCPP_INFO(this->get_logger(), "VPI PVA backend available");
+  if (vpi_context_flags & VPIBackend::VPI_BACKEND_VIC) {
+    vpi_backend_ = VPIBackend::VPI_BACKEND_VIC;
+    RCLCPP_INFO(this->get_logger(), "VPI VIC backend available");
   } else {
     vpi_backend_ = VPIBackend::VPI_BACKEND_CUDA;
     RCLCPP_INFO(this->get_logger(), "VPI CUDA backend available");
@@ -351,4 +351,4 @@ void CameraDriverNode::hw_enable_callback(
 } // namespace USBCameraDriver
 
 #include <rclcpp_components/register_node_macro.hpp>
-RCLCPP_COMPONENTS_REGISTER_NODE(USBCameraDriver::CameraDriverNode);
+RCLCPP_COMPONENTS_REGISTER_NODE(USBCameraDriver::CameraDriverNode)
