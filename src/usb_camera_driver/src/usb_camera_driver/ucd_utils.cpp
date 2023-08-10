@@ -354,6 +354,7 @@ bool CameraDriverNode::process_frame()
   VPIStatus err;
 
   // Create VPI stream
+  vpiStreamDestroy(vpi_stream_);
   err = vpiStreamCreate(
     vpi_backend_ | VPIBackend::VPI_BACKEND_CUDA,
     &vpi_stream_);
@@ -588,10 +589,6 @@ bool CameraDriverNode::process_frame()
       "CameraDriverNode::process_frame: VPIStream processing failed");
     return false;
   }
-
-  // Destroy stream
-  vpiStreamDestroy(vpi_stream_);
-  vpi_stream_ = nullptr;
 
   return true;
 #elif defined(WITH_CUDA)
