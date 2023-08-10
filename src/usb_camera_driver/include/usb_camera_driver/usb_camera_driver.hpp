@@ -49,10 +49,10 @@
 #include <vpi/OpenCVInterop.hpp>
 #include <vpi/Status.h>
 #include <vpi/Stream.h>
+#include <vpi/WarpMap.h>
 #include <vpi/algo/ConvertImageFormat.h>
 #include <vpi/algo/Remap.h>
 #include <vpi/algo/Rescale.h>
-
 #elif defined(WITH_CUDA)
 #include <opencv2/core/cuda.hpp>
 #include <opencv2/cudaarithm.hpp>
@@ -94,20 +94,25 @@ public:
 private:
   /* Node initialization routines. */
   void init_parameters();
+#if defined(WITH_VPI)
+  void init_vpi();
+#endif
 
   /* Video capture device and buffers. */
   cv::VideoCapture video_cap_;
-  cv::Mat frame_;
-  cv::Mat rectified_frame_;
+  cv::Mat frame_, frame_rot_;
+  cv::Mat rectified_frame_, frame_rect_rot_;
 
-  /* Rectification buffers and maps. */
+  /* Image processing pipeline buffers and maps. */
 #if defined(WITH_VPI)
   VPIBackend vpi_backend_;
   VPIStream vpi_stream_ = nullptr;
-  VPIPayload vpi_remap_payload_ = nullptr;
-  VPIImage vpi_frame_ = nullptr, vpi_frame_resized_ = nullptr, vpi_frame_rect_ = nullptr;
+  VPIPayload vpi_remap_payload_ = nullptr, vpi_rot_payload_ = nullptr;
+  VPIImage vpi_frame_ = nullptr, vpi_frame_resized_ = nullptr, vpi_frame_rot_ = nullptr;
+  VPIImage vpi_frame_rect_ = nullptr, vpi_frame_rect_rot_ = nullptr;
   VPIImage vpi_frame_wrap_ = nullptr, vpi_frame_rect_wrap_ = nullptr;
-  VPIWarpMap vpi_rect_map_;
+  VPIImage vpi_frame_rot_wrap_ = nullptr, vpi_frame_rect_rot_wrap_ = nullptr;
+  VPIWarpMap vpi_rect_map_, vpi_rot_map_;
   VPIPolynomialLensDistortionModel vpi_distortion_model_;
   VPICameraIntrinsic vpi_camera_int_;
   const VPICameraExtrinsic vpi_camera_ext_ = {
@@ -118,8 +123,8 @@ private:
   cv::Mat A_, D_;
   cv::Mat map1_, map2_;
 #if defined(WITH_CUDA)
-  cv::cuda::GpuMat gpu_frame_;
-  cv::cuda::GpuMat gpu_rectified_frame_;
+  cv::cuda::GpuMat gpu_frame_, gpu_frame_rot_;
+  cv::cuda::GpuMat gpu_rectified_frame_, gpu_rectified_frame_rot_;
   cv::cuda::GpuMat gpu_map1_, gpu_map2_;
 #endif
 #endif
@@ -129,8 +134,9 @@ private:
   int64_t fps_ = 0;
   int64_t image_height_ = 0;
   int64_t image_width_ = 0;
+  int64_t rotation_ = 0;
 
-  /* Node parameters validation routine. */
+  /* Node parameters validation routines. */
   bool validate_brightness(const rclcpp::Parameter & p);
   bool validate_exposure(const rclcpp::Parameter & p);
   bool validate_wb_temperature(const rclcpp::Parameter & p);
@@ -144,7 +150,7 @@ private:
   /* image_transport publishers and buffers. */
   std::shared_ptr<image_transport::CameraPublisher> camera_pub_;
   std::shared_ptr<image_transport::Publisher> rect_pub_;
-  camera_info_manager::CameraInfo camera_info_;
+  camera_info_manager::CameraInfo camera_info_{};
   std::shared_ptr<camera_info_manager::CameraInfoManager> cinfo_manager_;
 
   /* Theora stream publishers. */
@@ -154,6 +160,7 @@ private:
   /* Utility routines. */
   bool open_camera();
   void close_camera();
+  bool process_frame();
   Image::SharedPtr frame_to_msg(cv::Mat & frame);
 
   /* Camera sampling thread. */

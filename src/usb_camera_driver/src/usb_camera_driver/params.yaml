@@ -128,6 +128,17 @@ params:
     constraints: ""
     read_only: true
 
+  rotation:
+    type: integer
+    default_value: 0
+    min_value: -180
+    max_value: 180
+    step: 90
+    description: "Image rotation angle [deg]."
+    constraints: "Intended as last image processing step, must be a multiple of 90°."
+    read_only: true
+    var_name: rotation_
+
   wb_temperature:
     type: double
     default_value: 0.0

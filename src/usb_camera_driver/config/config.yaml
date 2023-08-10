@@ -13,8 +13,8 @@
     frame_id: map
     image_height: 480
     image_width: 640
-    is_flipped: false
     publisher_depth: 5
+    rotation: 0
     wb_temperature: 0.0
     # image_transport parameters
     usb_camera_driver:
