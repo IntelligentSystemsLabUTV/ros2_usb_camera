@@ -4,9 +4,9 @@
     base_topic_name: camera
     best_effort_qos: true
     brightness: 0.0
-    camera_calibration_file: file:///home/neo/workspace/src/usb_camera_driver/config/camera.yaml
+    camera_calibration_file: file:///home/neo/workspace/src/ros2_usb_camera/src/usb_camera_driver/config/camera.yaml
     camera_id: 0
-    camera_device_file: /dev/video0
+    camera_device_file: /dev/video2
     camera_name: camera
     exposure: 0.0
     fps: 20
